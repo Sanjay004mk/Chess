@@ -22,11 +22,22 @@ namespace chs
 
 	private:
 		glm::vec2 ScreenPosToTilePos(const glm::vec2& screenPos);
+		void GetLegalMoves();
+		void MovePiece(const glm::vec2& pos);
+
+		bool dragging = false;
+		bool clickedOnce = false;
+		bool clickedTwice = false;
 
 		float screenWidth, screenHeight;
 		et::OrthographicCamera camera;
 
+		std::vector<glm::vec2> moveTiles;
+		glm::vec2 emPassant;
+
 		std::unordered_map<glm::vec2, et::Ref<Piece>> pieces;
+
+		std::vector<et::Ref<Piece>> capturedPieces;
 
 		et::Ref<Piece> hoveredPiece;
 		glm::vec2 hoveredPiecePos;

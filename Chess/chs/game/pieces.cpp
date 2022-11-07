@@ -18,4 +18,80 @@ namespace chs
 		{ 'Q', PieceType_Queen + PieceType_White },
 		{ 'K', PieceType_King + PieceType_White },
 	};
+
+	std::vector<Move> Pawn::GetVaildMoves() const
+	{
+		auto direction = IsBlack() ? glm::vec2(0.f, 1.f) : glm::vec2(0.f, -1.f);
+		if (moved)
+			return { { direction, 1 } };
+		else
+			return { { direction, 2 } };
+	}
+
+	std::vector<Move> Rook::GetVaildMoves() const
+	{
+		return
+		{
+			{ glm::vec2(1.f, 0.f), -1},
+			{ glm::vec2(-1.f, 0.f), -1},
+			{ glm::vec2(0.f, 1.f), -1},
+			{ glm::vec2(0.f, -1.f), -1},
+		};
+	}
+
+	std::vector<Move> Knight::GetVaildMoves() const
+	{
+		return
+		{
+			{ glm::vec2(1.f, 2.f), 1},
+			{ glm::vec2(-1.f, 2.f), 1},
+			{ glm::vec2(1.f, -2.f), 1},
+			{ glm::vec2(-1.f, -2.f), 1},
+			{ glm::vec2(2.f, 1.f), 1},
+			{ glm::vec2(-2.f, 1.f), 1},
+			{ glm::vec2(2.f, -1.f), 1},
+			{ glm::vec2(-2.f, -1.f), 1},
+		};
+	}
+
+	std::vector<Move> Bishop::GetVaildMoves() const
+	{
+		return
+		{
+			{ glm::vec2(1.f, 1.f), -1},
+			{ glm::vec2(1.f, -1.f), -1},
+			{ glm::vec2(-1.f, -1.f), -1},
+			{ glm::vec2(-1.f, 1.f), -1},
+		};
+	}
+
+	std::vector<Move> Queen::GetVaildMoves() const
+	{
+		return
+		{
+			{ glm::vec2(1.f, 0.f), -1},
+			{ glm::vec2(-1.f, 0.f), -1},
+			{ glm::vec2(0.f, 1.f), -1},
+			{ glm::vec2(0.f, -1.f), -1},
+			{ glm::vec2(1.f, 1.f), -1},
+			{ glm::vec2(-1.f, 1.f), -1},
+			{ glm::vec2(-1.f, -1.f), -1},
+			{ glm::vec2(1.f, -1.f), -1},
+		};
+	}
+
+	std::vector<Move> King::GetVaildMoves() const
+	{
+		return
+		{
+			{ glm::vec2(1.f, 0.f), 1},
+			{ glm::vec2(-1.f, 0.f),1},
+			{ glm::vec2(0.f, 1.f), 1},
+			{ glm::vec2(0.f, -1.f),1},
+			{ glm::vec2(1.f, 1.f), 1},
+			{ glm::vec2(-1.f, 1.f), 1},
+			{ glm::vec2(-1.f, -1.f), 1},
+			{ glm::vec2(1.f, -1.f),1},
+		};
+	}
 }

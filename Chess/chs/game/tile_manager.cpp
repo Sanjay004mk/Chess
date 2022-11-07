@@ -1,8 +1,16 @@
 #include "tile_manager.h"
 #include "Entropy/Entropy.h"
 
+#define MOVE_TILE_TEXTURE_INDEX 12
+
 namespace chs
 {
+	bool InsideBoard(const glm::vec2& pos)
+	{
+		return pos.x > 0.f && pos.x < 9.f &&
+			pos.y > 0.f && pos.y < 9.f;
+	}
+
 	void TileManager::Load(std::string_view fen_string)
 	{
 		// start from top-left (vulkan -y up system)
@@ -70,6 +78,56 @@ namespace chs
 			}
 		}
 
+		// highlight moveTiles
+		{
+			q.color = glm::vec3(1.f);
+			for (auto& tile : moveTiles)
+			{
+				q.position = tile - glm::vec2(4.5f);
+				
+				et::Renderer::DrawQuad(q, MOVE_TILE_TEXTURE_INDEX);
+			}
+		}
+
+		// captured pieces
+		{
+			q.size = glm::vec2(0.5f);
+			q.color = glm::vec3(1.f);
+			glm::vec2 blackPos = glm::vec2(4.25f, -3.75f);
+			glm::vec2 whitePos = glm::vec2(4.25f, 3.75f);
+			for (auto& piece : capturedPieces)
+			{
+				if (piece->IsBlack())
+				{
+					q.position = blackPos;
+					if (blackPos.y > -0.5f)
+					{
+						blackPos.y = -3.75f;
+						blackPos.x = 4.75f;
+					}
+					else
+						blackPos.y += 0.5f;
+
+					et::Renderer::DrawQuad(q, piece->type);
+				}
+				else
+				{
+					q.position = whitePos;
+					if (whitePos.y < 0.5f)
+					{
+						whitePos.y = 3.75f;
+						whitePos.x = 4.75f;
+					}
+					else
+						whitePos.y -= 0.5f;
+
+					et::Renderer::DrawQuad(q, piece->type);
+				}
+			}
+
+			q.size = glm::vec2(1.f);
+		}
+
 		// pieces
 		{
 			q.color = glm::vec3(1.f);
@@ -134,26 +192,65 @@ namespace chs
 	void TileManager::OnMouseClick(const glm::vec2& mousePos)
 	{
 		clickedPos = ScreenPosToTilePos(mousePos);
-	}
+		if (!InsideBoard(clickedPos))
+			return;
 
-	void TileManager::OnMouseRelease(const glm::vec2& mousePos)
-	{
-		auto pos = ScreenPosToTilePos(mousePos);
-		// mouse was released on the same tile it was clicked on
-		if (pos == clickedPos)
+		dragging = true;
+
+		if (!clickedOnce)
 		{
-			auto it = pieces.find(pos);
+			auto it = pieces.find(clickedPos);
 			if (it == pieces.end())
 				clickedPiece.reset();
 			else
 			{
 				clickedPiece = it->second;
-				clickedPiecePos = pos;
+				clickedPiecePos = clickedPos;
+				GetLegalMoves();
+				clickedOnce = true;
+			}
+		}
+		else
+			clickedTwice = true;
+
+	}
+
+	void TileManager::OnMouseRelease(const glm::vec2& mousePos)
+	{
+		dragging = false;
+		auto pos = ScreenPosToTilePos(mousePos);
+
+		if (pos == clickedPos)
+		{
+			if (clickedTwice)
+			{
+				auto it = pieces.find(clickedPos);
+				if (it != pieces.end())
+				{
+					if (it->second != clickedPiece && !(it->second->IsBlack() ^ clickedPiece->IsBlack()))
+					{
+						moveTiles.clear();
+						clickedPiece = it->second;
+						clickedPiecePos = clickedPos;
+						GetLegalMoves();
+						clickedOnce = true;
+					}
+					else
+						goto NO_SELECT;
+				}
+				else
+				{
+					NO_SELECT:
+					MovePiece(pos);
+					clickedOnce = clickedTwice = false;
+				}
 			}
 		}
 		else
 		{
-			// handle dragging and dropping pieces
+			// drag drop
+			MovePiece(pos);
+			clickedOnce = clickedTwice = false;
 		}
 	}
 
@@ -173,5 +270,133 @@ namespace chs
 		mousePos += glm::vec2(4.5f);
 
 		return mousePos;
+	}
+
+	void TileManager::GetLegalMoves()
+	{
+		if (!clickedPiece)
+			return;
+
+		auto moves = clickedPiece->GetVaildMoves();
+
+		for (auto& move : moves)
+		{
+			auto tile = clickedPiecePos;
+
+			while ((move.numTiles > 0 || move.numTiles < 0))
+			{
+				tile += move.direction;
+				if (!InsideBoard(tile))
+					break;
+
+				// if tile contains a piece 
+				//		1. if selected piece is a pawn break
+				//		2. if piece in the tile is the same color break
+				//		3. else add tile to list and break
+				auto it = pieces.find(tile);
+				if (it != pieces.end())
+				{
+					if (clickedPiece->GetType() == PieceType_Pawn)
+						break;
+
+					if (!(clickedPiece->IsBlack() ^ it->second->IsBlack()))
+						break;
+
+					moveTiles.push_back(tile);
+					break;
+				}
+
+				moveTiles.push_back(tile);
+				move.numTiles--;
+			}
+
+			if (clickedPiece->GetType() == PieceType_Pawn)
+			{
+				std::vector<glm::vec2> tiles =
+				{
+					glm::vec2(1.f, 1.f),
+					glm::vec2(-1.f, 1.f),
+				};
+
+				if (!clickedPiece->IsBlack())
+					for (auto& tile : tiles)
+						tile.y = -1.f;
+
+				for (auto& tile : tiles)
+				{
+					tile += clickedPiecePos;
+					auto it = pieces.find(tile);
+					bool add = true;
+					if (it == pieces.end())
+					{
+						if (tile != emPassant)
+							add = false;
+					}
+					else
+					{
+						if (!(clickedPiece->IsBlack() ^ it->second->IsBlack()))
+							add = false;
+					}
+
+					if (add)
+						moveTiles.push_back(tile);
+				}
+			}
+		}
+	}
+
+	void TileManager::MovePiece(const glm::vec2& pos__)
+	{
+		auto pos = pos__;
+
+		if (clickedPiece && InsideBoard(pos))
+		{
+			auto it = std::find(moveTiles.begin(), moveTiles.end(), pos);
+			// user moved piece
+			if (it != moveTiles.end())
+			{
+				auto piece = pieces.find(pos);
+
+				if (emPassant == pos && clickedPiece->GetType() == PieceType_Pawn)
+				{
+					auto tile = pos;
+					if (clickedPiece->IsBlack())
+						tile -= glm::vec2(0.f, 1.f);
+					else
+						tile += glm::vec2(0.f, 1.f);
+
+					piece = pieces.find(tile);
+					// piece should exist for emPassant
+					ET_ASSERT_MSG(piece != pieces.end(), "EM PASSANT NOT WORKING!");
+					capturedPieces.push_back(piece->second);
+					pieces.erase(tile);
+				}
+
+				// user captured piece
+				else if (piece != pieces.end())
+				{
+					capturedPieces.push_back(piece->second);
+					pieces.erase(pos);
+				}
+
+				pieces[pos] = clickedPiece;
+				pieces.erase(clickedPiecePos);
+				// clear emPassant after one move
+				emPassant = glm::vec2(0.f);
+
+				// set emPassant
+				if (clickedPiece->GetType() == PieceType_Pawn && !clickedPiece->moved)
+				{
+					if (clickedPiece->IsBlack())
+						emPassant = pos - glm::vec2(0.f, 1.f);
+					else
+						emPassant = pos + glm::vec2(0.f, 1.f);
+				}
+				clickedPiece->moved = true;
+			}
+
+			moveTiles.clear();
+			clickedPiece.reset();
+		}
 	}
 }

@@ -22,7 +22,8 @@ namespace chs
 
 	struct Move
 	{
-
+		glm::vec2 direction = {};
+		int32_t numTiles = 0;
 	};
 
 	class Piece
@@ -37,6 +38,7 @@ namespace chs
 		PieceType GetType() const { return type % 2 == 0 ? type : type - 1; }
 
 		const PieceType type;
+		bool moved = false;
 	};
 
 	class Pawn : public Piece
@@ -46,7 +48,7 @@ namespace chs
 		Pawn(PieceType type) : Piece(type) {}
 		~Pawn() {}
 
-		virtual std::vector<Move> GetVaildMoves() const override { return {}; }
+		virtual std::vector<Move> GetVaildMoves() const override;
 	};
 
 	class Rook : public Piece
@@ -56,7 +58,7 @@ namespace chs
 		Rook(PieceType type) : Piece(type) {}
 		~Rook() {}
 
-		virtual std::vector<Move> GetVaildMoves() const override { return {}; }
+		virtual std::vector<Move> GetVaildMoves() const override;
 	};
 
 	class Knight : public Piece
@@ -66,7 +68,7 @@ namespace chs
 		Knight(PieceType type) : Piece(type) {}
 		~Knight() {}
 
-		virtual std::vector<Move> GetVaildMoves() const override { return {}; }
+		virtual std::vector<Move> GetVaildMoves() const override;
 	};
 
 	class Bishop : public Piece
@@ -76,7 +78,7 @@ namespace chs
 		Bishop(PieceType type) : Piece(type) {}
 		~Bishop() {}
 
-		virtual std::vector<Move> GetVaildMoves() const override { return {}; }
+		virtual std::vector<Move> GetVaildMoves() const override;
 	};
 
 	class Queen : public Piece
@@ -86,7 +88,7 @@ namespace chs
 		Queen(PieceType type) : Piece(type) {}
 		~Queen() {}
 
-		virtual std::vector<Move> GetVaildMoves() const override { return {}; }
+		virtual std::vector<Move> GetVaildMoves() const override;
 	};
 
 	class King : public Piece
@@ -96,6 +98,6 @@ namespace chs
 		King(PieceType type) : Piece(type) {}
 		~King() {}
 
-		virtual std::vector<Move> GetVaildMoves() const override { return {}; }
+		virtual std::vector<Move> GetVaildMoves() const override;
 	};
 }

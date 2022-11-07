@@ -32,7 +32,7 @@ layout(location = 0) in vec2 ouv;
 layout(location = 1) in vec3 ocolor;
 layout(location = 2) flat in int otexindex;
 
-layout(set = 0, binding = 1) uniform sampler2D textures[12];
+layout(set = 0, binding = 1) uniform sampler2D textures[13];
 
 void main()
 {

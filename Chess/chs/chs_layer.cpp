@@ -5,6 +5,7 @@ namespace chs
 {
 	void ChessLayer::OnAttach()
 	{
+		// renderpass
 		{
 			et::RenderpassCreateInfo createInfo;
 			createInfo.attachments =
@@ -38,6 +39,7 @@ namespace chs
 			renderpass = et::CreateRenderPass(createInfo);
 		}
 
+		// shader
 		{
 			et::ShaderCreateInfo createInfo;
 			createInfo.uniformDescriptions =
@@ -51,7 +53,7 @@ namespace chs
 				{
 					et::ShaderStage::Fragment,
 					1,
-					et::ShaderDataType::ImageSampler | et::ShaderDataType::SetArraySize(12),
+					et::ShaderDataType::ImageSampler | et::ShaderDataType::SetArraySize(13),
 					"textures"
 				}
 			};
@@ -60,28 +62,37 @@ namespace chs
 			defaultShader = et::CreateShader("default.shader", createInfo);
 		}
 
+		// textures
 		{
 			textures =
 			{
 				et::CreateTexture("assets/pawn.png", et::TextureCreateInfo()),
 				et::CreateTexture("assets/pawn_white.png", et::TextureCreateInfo()),
+
 				et::CreateTexture("assets/rook.png", et::TextureCreateInfo()),
 				et::CreateTexture("assets/rook_white.png", et::TextureCreateInfo()),
+
 				et::CreateTexture("assets/knight.png", et::TextureCreateInfo()),
 				et::CreateTexture("assets/knight_white.png", et::TextureCreateInfo()),
+
 				et::CreateTexture("assets/bishop.png", et::TextureCreateInfo()),
-				et::CreateTexture("assets/bishop_white.png", et::TextureCreateInfo()),
+				et::CreateTexture("assets/bishop_white.png", et::TextureCreateInfo())
+				,
 				et::CreateTexture("assets/queen.png", et::TextureCreateInfo()),
 				et::CreateTexture("assets/queen_white.png", et::TextureCreateInfo()),
+
 				et::CreateTexture("assets/king.png", et::TextureCreateInfo()),
 				et::CreateTexture("assets/king_white.png", et::TextureCreateInfo()),
+
+				et::CreateTexture("assets/move_tile.png", et::TextureCreateInfo()),
 			};
+
+			defaultShader->SetTextures("textures", textures);
 		}
-
-		defaultShader->SetTextures("textures", textures);
-
+		// initialize pipeline and framebuffer
 		Resize(800, 800);
 
+		// starting positions 
 		tileManager.Load("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR");
 	}
 
@@ -96,7 +107,7 @@ namespace chs
 
 		defaultShader->SetUniform("proj", tileManager.GetProjection());
 		et::RenderCommand::StartCommandBuffer();
-		et::RenderCommand::SetClearColor(glm::vec4(0.1, 0.1, 0.1, 1.0), 0);
+		et::RenderCommand::SetClearColor(glm::vec4(0.25, 0.21, 0.23, 1.0), 0);
 
 		et::Renderer::BeginRenderpass(renderpass, framebuffer);
 		et::Renderer::BindPipeline(pipeline);
