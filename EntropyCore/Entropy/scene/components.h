@@ -14,6 +14,7 @@ namespace et
 		alignas(8)  glm::vec2 position;
 		alignas(8)  glm::vec2 uv;
 		alignas(16) glm::vec3 color;
+		alignas(4)  int32_t texture_index = -1;
 
 		bool operator==(const Vertex& other) const { return position == other.position && uv == other.uv && color == other.color; }
 	};
@@ -22,7 +23,12 @@ namespace et
 	{
 		glm::vec2 position = { 0.f, 0.f };
 		glm::vec2 size = { 1.f, 1.f };
-		glm::vec2 uvs[4] = {};
+		glm::vec2 uvs[4] = {
+			glm::vec2(1.f, 0.f),
+			glm::vec2(1.f, 1.f),
+			glm::vec2(0.f, 1.f),
+			glm::vec2(0.f, 0.f)
+		};
 		glm::vec3 color = { 1.f, 0.f, 1.f };
 	};
 }

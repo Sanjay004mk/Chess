@@ -580,6 +580,13 @@ namespace et
 			DataType::Vec3,					// format
 			offsetof(Vertex, color)			// offset
 		},
+
+		{
+			3,                              // location
+			0,								// binding
+			DataType::Int32,				// format
+			offsetof(Vertex, texture_index)	// offset
+		}
 	};
 
 	const std::vector<VertexInputBinding> BasicVertexBinding =
@@ -795,7 +802,7 @@ namespace et
 
 		for (size_t j = 0; j < VulkanAPI::GetSurfaceDetails().imageCount; j++)
 		{
-			std::vector<VkDescriptorImageInfo> imageInfos(std::get<size_t>(it->second));
+			std::vector<VkDescriptorImageInfo> imageInfos(textures.size());
 			for (size_t i = 0; i < textures.size(); i++)
 			{
 				VulkanTexture& texture = *(VulkanTexture*)(textures[i].get());

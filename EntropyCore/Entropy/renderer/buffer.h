@@ -69,15 +69,13 @@ namespace et
 		VertexBuffer(const VertexBuffer&) = delete;
 		~VertexBuffer();
 
-		void Bake();
 		Ref<Buffer> Get() { return buffer; }
 
-		Vertex* GetVertices() { return (Vertex*)stagingBuffer->data; }
+		Vertex* GetVertices() { return (Vertex*)buffer->data; }
 
 		const size_t size;
 		size_t count;
 		Ref<Buffer> buffer;
-		Ref<Buffer> stagingBuffer;
 	};
 
 	class IndexBuffer
@@ -88,14 +86,12 @@ namespace et
 		IndexBuffer(const IndexBuffer&) = delete;
 		~IndexBuffer();
 
-		void Bake();
 		Ref<Buffer> Get() { return buffer; }
 
-		uint32_t* GetIndices() { return (uint32_t*)stagingBuffer->data; }
+		uint32_t* GetIndices() { return (uint32_t*)buffer->data; }
 
 		const size_t size;
 		size_t count;
 		Ref<Buffer> buffer;
-		Ref<Buffer> stagingBuffer;
 	};
 }

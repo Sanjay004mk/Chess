@@ -247,63 +247,49 @@ namespace et
 	}
 
 	VertexBuffer::VertexBuffer(const std::vector<Vertex>& vertices)
-		: size(vertices.size())
+		: size(vertices.size()), count(vertices.size())
 	{
 		size_t size = count * sizeof(Vertex);
-		stagingBuffer = CreateRef<VulkanBuffer>(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+		VulkanBuffer stagingBuffer(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-		stagingBuffer->SetDataMapped(vertices.data(), size);
+		stagingBuffer.SetDataMapped(vertices.data(), size);
 
-		buffer = CreateRef<VulkanBuffer>(*(VulkanBuffer*)stagingBuffer.get(), size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+		buffer = CreateRef<VulkanBuffer>(stagingBuffer, size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 	}
 
 	VertexBuffer::VertexBuffer(Vertex** vertices, size_t size)
 		: size(size)
 	{
 		size *= sizeof(Vertex);
-		stagingBuffer = CreateRef<VulkanBuffer>(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+		buffer = CreateRef<VulkanBuffer>(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 		*vertices = GetVertices();
-
-		buffer = CreateRef<VulkanBuffer>(size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 	}
 
 	VertexBuffer::~VertexBuffer()
 	{
 	}
 
-	void VertexBuffer::Bake()
-	{
-		buffer->Copy(stagingBuffer);
-	}
-
 	IndexBuffer::IndexBuffer(const std::vector<uint32_t>& indices)
-		: size(indices.size())
+		: size(indices.size()), count(indices.size())
 	{
 		size_t size = count * sizeof(uint32_t);
-		stagingBuffer = CreateRef<VulkanBuffer>(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+		VulkanBuffer stagingBuffer(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-		stagingBuffer->SetDataMapped(indices.data(), size);
+		stagingBuffer.SetDataMapped(indices.data(), size);
 
-		buffer = CreateRef<VulkanBuffer>(*(VulkanBuffer*)stagingBuffer.get(), size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+		buffer = CreateRef<VulkanBuffer>(stagingBuffer, size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 	}
 
 	IndexBuffer::IndexBuffer(uint32_t** indices, size_t size)
 		: size(size)
 	{
 		size *= sizeof(uint32_t);
-		stagingBuffer = CreateRef<VulkanBuffer>(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+		buffer = CreateRef<VulkanBuffer>(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 		*indices = GetIndices();
-
-		buffer = CreateRef<VulkanBuffer>(size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 	}
 
 	IndexBuffer::~IndexBuffer()
 	{
-	}
-
-	void IndexBuffer::Bake()
-	{
-		buffer->Copy(stagingBuffer);
 	}
 
 	Ref<Buffer> CreateBuffer(const BufferCreateInfo& createInfo)

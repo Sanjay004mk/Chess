@@ -28,5 +28,7 @@ namespace chs
 		et::Ref<et::Pipeline> pipeline;
 		et::Ref<et::Renderpass> renderpass;
 		et::Ref<et::Framebuffer> framebuffer;
+
+		std::vector<et::Ref<et::Texture>> textures;
 	};
 }

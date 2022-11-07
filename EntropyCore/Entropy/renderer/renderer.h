@@ -52,6 +52,7 @@ namespace et
 		static void BindNextShader();
 
 		static void DrawQuad(const Quad& q);
+		static void DrawQuad(const Quad& q, int32_t textureIndex);
 		
 		static RenderAPI::API GetAPI() { return spRenderAPI->GetAPI(); }
 

@@ -47,6 +47,12 @@ namespace chs
 					0,
 					et::ShaderDataType::Mat4f,
 					"proj"
+				},
+				{
+					et::ShaderStage::Fragment,
+					1,
+					et::ShaderDataType::ImageSampler | et::ShaderDataType::SetArraySize(12),
+					"textures"
 				}
 			};
 			createInfo.vertexAttributes = et::Shader::BasicShaderCreateInfo.vertexAttributes;
@@ -54,7 +60,29 @@ namespace chs
 			defaultShader = et::CreateShader("default.shader", createInfo);
 		}
 
+		{
+			textures =
+			{
+				et::CreateTexture("assets/pawn.png", et::TextureCreateInfo()),
+				et::CreateTexture("assets/pawn_white.png", et::TextureCreateInfo()),
+				et::CreateTexture("assets/rook.png", et::TextureCreateInfo()),
+				et::CreateTexture("assets/rook_white.png", et::TextureCreateInfo()),
+				et::CreateTexture("assets/knight.png", et::TextureCreateInfo()),
+				et::CreateTexture("assets/knight_white.png", et::TextureCreateInfo()),
+				et::CreateTexture("assets/bishop.png", et::TextureCreateInfo()),
+				et::CreateTexture("assets/bishop_white.png", et::TextureCreateInfo()),
+				et::CreateTexture("assets/queen.png", et::TextureCreateInfo()),
+				et::CreateTexture("assets/queen_white.png", et::TextureCreateInfo()),
+				et::CreateTexture("assets/king.png", et::TextureCreateInfo()),
+				et::CreateTexture("assets/king_white.png", et::TextureCreateInfo()),
+			};
+		}
+
+		defaultShader->SetTextures("textures", textures);
+
 		Resize(800, 800);
+
+		tileManager.Load("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR");
 	}
 
 	void ChessLayer::OnDetach()
@@ -65,8 +93,6 @@ namespace chs
 	void ChessLayer::OnUpdate(et::TimeStep ts)
 	{
 		defaultShader->SetUniform("proj", tileManager.GetProjection());
-		static et::Quad q;
-		q.color = glm::vec3(glm::sin(et::Time::GetTime()), 0.0f, glm::cos(et::Time::GetTime()));
 		et::RenderCommand::StartCommandBuffer();
 		et::RenderCommand::SetClearColor(glm::vec4(0.1, 0.1, 0.1, 1.0), 0);
 

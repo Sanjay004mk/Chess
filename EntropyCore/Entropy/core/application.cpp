@@ -37,9 +37,6 @@ namespace et
 
 		VulkanAPI::DeviceWaitIdle();
 
-		std::ofstream file(CONFIG_FILE);
-		file.close();
-
 		for (auto& pLayer : mLayers)
 			PopLayer(pLayer);
 

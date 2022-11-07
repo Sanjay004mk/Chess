@@ -1,5 +1,6 @@
 #include <etpch.h>
 #include <queue>
+#include <stb_image/stb_image.h>
 
 #include "Entropy/scene/components.h"
 #include "renderer.h"
@@ -27,6 +28,9 @@ namespace et
 	void Renderer::Init(RenderAPI::API api)
 	{
 		ET_LOG_TRACE("Renderer Initializing...");
+
+		// vertically flip images loaded with stb_image
+		stbi_set_flip_vertically_on_load(1);
 
 		switch (api)
 		{
@@ -133,8 +137,6 @@ namespace et
 		if (quadCount == 0)
 			return;
 
-		vertexBuffer->Bake();
-		indexBuffer->Bake();
 		vertexBuffer->count = quadCount * 4;
 		indexBuffer->count = quadCount * 6;
 
@@ -147,6 +149,11 @@ namespace et
 
 	void Renderer::DrawQuad(const Quad& quad)
 	{
+		DrawQuad(quad, -1);
+	}
+
+	void Renderer::DrawQuad(const Quad& quad, int32_t textureIndex)
+	{
 		if (quadCount >= MAX_QUADS)
 			ET_ASSERT_MSG(false, "fix me!");
 
@@ -154,23 +161,28 @@ namespace et
 			(*vertices).position = quad.position + quad.size / 2.f;
 			(*vertices).color = quad.color;
 			(*vertices).uv = quad.uvs[0];
+			(*vertices).texture_index = textureIndex;
 
 			vertices++;
 
 			(*vertices).position = glm::vec2(quad.position.x + quad.size.x / 2.f, quad.position.y - quad.size.y / 2.f);
 			(*vertices).color = quad.color;
 			(*vertices).uv = quad.uvs[1];
+			(*vertices).texture_index = textureIndex;
 
 			vertices++;
 
 			(*vertices).position = quad.position - quad.size / 2.f;
 			(*vertices).color = quad.color;
 			(*vertices).uv = quad.uvs[2];
+			(*vertices).texture_index = textureIndex;
+
 			vertices++;
 
 			(*vertices).position = glm::vec2(quad.position.x - quad.size.x / 2.f, quad.position.y + quad.size.y / 2.f);
 			(*vertices).color = quad.color;
 			(*vertices).uv = quad.uvs[3];
+			(*vertices).texture_index = textureIndex;
 
 			vertices++;
 		}
