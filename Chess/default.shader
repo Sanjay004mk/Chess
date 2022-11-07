@@ -37,7 +37,10 @@ layout(set = 0, binding = 1) uniform sampler2D textures[12];
 void main()
 {
 	if (otexindex > -1)
+	{
 		color = texture(textures[otexindex], ouv);
+		color.rgb *= ocolor;
+	}
 	else
 		color = vec4(ocolor, 1.0);
 

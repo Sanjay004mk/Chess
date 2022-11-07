@@ -28,7 +28,7 @@ namespace chs
 	class Piece
 	{
 	public:
-		Piece(PieceType type) : type(type), position({}) {}
+		Piece(PieceType type) : type(type) {}
 		virtual ~Piece() {}
 
 		virtual std::vector<Move> GetVaildMoves() const = 0;
@@ -37,7 +37,6 @@ namespace chs
 		PieceType GetType() const { return type % 2 == 0 ? type : type - 1; }
 
 		const PieceType type;
-		glm::vec2 position;
 	};
 
 	class Pawn : public Piece

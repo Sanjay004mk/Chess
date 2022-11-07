@@ -27,7 +27,7 @@ namespace et
 		
 		/// <summary>
 		/// Retrieves the position of the cursor relative to the content area of the window.
-		/// Is Cursor is locked (Input::LockMouseCursor()), the cursor position is limited only by the max value of float
+		/// If Cursor is locked (Input::LockMouseCursor()), the cursor position is limited only by the max value of float
 		/// </summary>
 		/// <returns>Returns the position of the cursor, in screen coordinates, relative to the upper - left corner of the window</returns>
 		static glm::vec2 GetMousePosition();

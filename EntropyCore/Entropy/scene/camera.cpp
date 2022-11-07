@@ -14,6 +14,8 @@ namespace et
 	{
 		zNear = -depth / 2.f;
 		zFar = depth / 2.f;
+		this->width = width;
+		this->height = height;
 		projection = glm::ortho(-width / 2.f, width / 2.f, -height / 2.f, height / 2.f, zNear, zFar);
 	}
 

@@ -92,6 +92,8 @@ namespace chs
 
 	void ChessLayer::OnUpdate(et::TimeStep ts)
 	{
+		tileManager.OnUpdate(ts);
+
 		defaultShader->SetUniform("proj", tileManager.GetProjection());
 		et::RenderCommand::StartCommandBuffer();
 		et::RenderCommand::SetClearColor(glm::vec4(0.1, 0.1, 0.1, 1.0), 0);
@@ -112,7 +114,10 @@ namespace chs
 
 	void ChessLayer::OnImGuiRender()
 	{
-
+		// tmp
+		ImGui::Begin("Info", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking);// | ImGuiWindowFlags_NoMove);
+		ImGui::Text("%f, %f", tileManager.GetHoveredPiecePos().x, tileManager.GetHoveredPiecePos().y);
+		ImGui::End();
 	}
 
 	void ChessLayer::OnEvent(et::Event& e)
@@ -121,6 +126,18 @@ namespace chs
 		dispatcher.Dispatch<et::WindowResizeEvent>([this](et::WindowResizeEvent& e)
 			{
 				this->Resize(e.GetWidth(), e.GetHeight());
+				return false;
+			});
+
+		dispatcher.Dispatch<et::MouseButtonPressedEvent>([this](et::MouseButtonPressedEvent& e)
+			{
+				this->tileManager.OnMouseClick(et::Input::GetMousePosition());
+				return false;
+			});
+
+		dispatcher.Dispatch<et::MouseButtonReleasedEvent>([this](et::MouseButtonReleasedEvent& e)
+			{
+				this->tileManager.OnMouseRelease(et::Input::GetMousePosition());
 				return false;
 			});
 	}
