@@ -29,11 +29,14 @@ namespace chs
 		bool clickedOnce = false;
 		bool clickedTwice = false;
 
+		bool blacksTurn = false;
+
 		float screenWidth, screenHeight;
 		et::OrthographicCamera camera;
 
 		std::vector<glm::vec2> moveTiles;
 		glm::vec2 emPassant;
+		std::array<glm::vec2, 2> castles;
 
 		std::unordered_map<glm::vec2, et::Ref<Piece>> pieces;
 

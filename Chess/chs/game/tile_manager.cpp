@@ -204,10 +204,15 @@ namespace chs
 				clickedPiece.reset();
 			else
 			{
-				clickedPiece = it->second;
-				clickedPiecePos = clickedPos;
-				GetLegalMoves();
-				clickedOnce = true;
+				if (!(it->second->IsBlack() ^ blacksTurn))
+				{
+					clickedPiece = it->second;
+					clickedPiecePos = clickedPos;
+					GetLegalMoves();
+					clickedOnce = true;
+				}
+				else
+					clickedPiece.reset();
 			}
 		}
 		else
@@ -342,6 +347,57 @@ namespace chs
 						moveTiles.push_back(tile);
 				}
 			}
+			else if (clickedPiece->GetType() == PieceType_King)
+			{
+				if (!clickedPiece->moved)
+				{
+					auto kingPos = clickedPiecePos;
+					std::vector<glm::vec2> rooks =
+					{
+						glm::vec2(1.f, kingPos.y),
+						glm::vec2(8.f, kingPos.y)
+					};
+					uint32_t i = 0;
+					for (auto& rook : rooks)
+					{
+						bool can_castle = true;
+						auto it = pieces.find(rook);
+						// there is a rook in the default position
+						if (it != pieces.end())
+						{
+							// it hasn't moved
+							if (!it->second->moved)
+							{
+								auto CheckPath = [&](float direction)
+								{
+									auto pos = kingPos;
+									for (size_t x = 1; x <= 2; x++)
+									{
+										pos += glm::vec2(1.f, 0.f) * direction;
+										auto piece = pieces.find(pos);
+										if (piece != pieces.end())
+											can_castle = false;
+									}
+									if (can_castle)
+									{
+										moveTiles.push_back(pos);
+										castles[i] = pos;
+									}
+								};
+
+								// king side
+								if (rook.x > 4.f)
+									CheckPath(1.f);
+								else // queen side
+									CheckPath(-1.f);
+							}
+						}
+						i++;
+					}
+				}
+			}
+			else
+				castles[0] = castles[1] = glm::vec2(0.f);
 		}
 	}
 
@@ -355,6 +411,7 @@ namespace chs
 			// user moved piece
 			if (it != moveTiles.end())
 			{
+				blacksTurn = !blacksTurn;
 				auto piece = pieces.find(pos);
 
 				if (emPassant == pos && clickedPiece->GetType() == PieceType_Pawn)
@@ -393,6 +450,37 @@ namespace chs
 						emPassant = pos + glm::vec2(0.f, 1.f);
 				}
 				clickedPiece->moved = true;
+
+				// castling
+				{
+					if (clickedPiece->GetType() == PieceType_King)
+					{
+						for (auto& castle : castles)
+							if (pos == castle)
+							{
+								auto rookPos = castle;
+								// castling to king side
+								if (castle.x > 4.f)
+								{
+									castle.x--;
+									rookPos.x = 8.f;
+								}
+								else // castling to queen side
+								{
+									castle.x++;
+									rookPos.x = 1.f;
+								}
+
+								// castle = new rook position
+								auto rook = pieces.find(rookPos);
+								ET_ASSERT_MSG(rook != pieces.end(), "CASTLING NOT WORKING");
+								// move rook
+								pieces[castle] = rook->second;
+								pieces.erase(rookPos);
+							}
+					}
+					castles[0] = castles[1] = glm::vec2(0.f);
+				}
 			}
 
 			moveTiles.clear();
