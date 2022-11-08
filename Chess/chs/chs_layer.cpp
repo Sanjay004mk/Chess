@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include "chs_layer.h"
 #include "Entropy/Entropy.h"
 
@@ -66,6 +68,8 @@ namespace chs
 		{
 			textures =
 			{
+				et::CreateTexture("assets/move_tile.png", et::TextureCreateInfo()),
+
 				et::CreateTexture("assets/pawn.png", et::TextureCreateInfo()),
 				et::CreateTexture("assets/pawn_white.png", et::TextureCreateInfo()),
 
@@ -84,7 +88,6 @@ namespace chs
 				et::CreateTexture("assets/king.png", et::TextureCreateInfo()),
 				et::CreateTexture("assets/king_white.png", et::TextureCreateInfo()),
 
-				et::CreateTexture("assets/move_tile.png", et::TextureCreateInfo()),
 			};
 
 			defaultShader->SetTextures("textures", textures);
@@ -93,7 +96,9 @@ namespace chs
 		Resize(800, 800);
 
 		// starting positions 
-		tileManager.Load("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR");
+		//tileManager.Load("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+		board = et::CreateRef<Board>("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1");
+		std::cout << *board << std::endl;
 	}
 
 	void ChessLayer::OnDetach()
@@ -123,12 +128,17 @@ namespace chs
 		et::Renderer::Present(screen);
 	}
 
+	bool checkmate = false;
+
 	void ChessLayer::OnImGuiRender()
 	{
 		// tmp
-		ImGui::Begin("Info", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking);// | ImGuiWindowFlags_NoMove);
-		ImGui::Text("%f, %f", tileManager.GetHoveredPiecePos().x, tileManager.GetHoveredPiecePos().y);
-		ImGui::End();
+		if (checkmate)
+		{
+			ImGui::Begin("Info", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking);// | ImGuiWindowFlags_NoMove);
+			ImGui::Text("CHECKMATE");
+			ImGui::End();
+		}
 	}
 
 	void ChessLayer::OnEvent(et::Event& e)
@@ -142,13 +152,15 @@ namespace chs
 
 		dispatcher.Dispatch<et::MouseButtonPressedEvent>([this](et::MouseButtonPressedEvent& e)
 			{
-				this->tileManager.OnMouseClick(et::Input::GetMousePosition());
+				if (e.GetMouseButton() == et::Mouse::ButtonLeft)
+					this->tileManager.OnMouseClick(et::Input::GetMousePosition());
 				return false;
 			});
 
 		dispatcher.Dispatch<et::MouseButtonReleasedEvent>([this](et::MouseButtonReleasedEvent& e)
 			{
-				this->tileManager.OnMouseRelease(et::Input::GetMousePosition());
+				if (e.GetMouseButton() == et::Mouse::ButtonLeft)
+					this->tileManager.OnMouseRelease(et::Input::GetMousePosition());
 				return false;
 			});
 	}

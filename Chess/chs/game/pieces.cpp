@@ -1,5 +1,7 @@
 #include "pieces.h"
 
+#if 0
+
 namespace chs
 {
 	std::unordered_map<char, PieceType> CharToPiece =
@@ -95,3 +97,44 @@ namespace chs
 		};
 	}
 }
+
+#else
+
+namespace chs
+{
+	std::unordered_map<char, PieceType> CharToPiece =
+	{
+		{ 'p', BlackPawn },
+		{ 'r', BlackRook },
+		{ 'b', BlackBishop },
+		{ 'n', BlackKnight },
+		{ 'q', BlackQueen },
+		{ 'k', BlackKing },
+
+		{ 'P', WhitePawn },
+		{ 'R', WhiteRook },
+		{ 'B', WhiteBishop },
+		{ 'N', WhiteKnight },
+		{ 'Q', WhiteQueen },
+		{ 'K', WhiteKing },
+	};
+
+	std::unordered_map<PieceType, char> PieceToChar =
+	{
+		{ BlackPawn,   'p' },
+		{ BlackRook,   'r' },
+		{ BlackBishop, 'b' },
+		{ BlackKnight, 'n' },
+		{ BlackQueen,  'q' },
+		{ BlackKing,   'k' },
+
+		{ WhitePawn,   'P' },
+		{ WhiteRook,   'R' },
+		{ WhiteBishop, 'B' },
+		{ WhiteKnight, 'N' },
+		{ WhiteQueen,  'Q' },
+		{ WhiteKing,   'K' },
+	};
+}
+
+#endif

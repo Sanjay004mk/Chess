@@ -1,6 +1,7 @@
 #pragma once
 #include <Entropy/Entropy.h>
 #include "game/tile_manager.h"
+#include "game/board.h"
 
 namespace chs
 {
@@ -22,6 +23,7 @@ namespace chs
 		uint32_t width = 0, height = 0;
 
 		TileManager tileManager;
+		et::Ref<Board> board;
 
 		et::Ref<et::Texture> screen;
 		et::Ref<et::Shader> defaultShader;
