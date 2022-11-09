@@ -29,9 +29,6 @@ namespace et
 	{
 		ET_LOG_TRACE("Renderer Initializing...");
 
-		// vertically flip images loaded with stb_image
-		stbi_set_flip_vertically_on_load(1);
-
 		switch (api)
 		{
 		case RenderAPI::API::Vulkan:

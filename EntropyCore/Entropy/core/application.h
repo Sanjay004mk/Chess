@@ -5,8 +5,6 @@
 #include "window.h"
 #include "Entropy/events/application_events.h"
 
-#define CONFIG_FILE "Entropy.info"
-
 namespace et
 {
 	struct ApplicationCommandLineArgs

@@ -3,6 +3,9 @@
 #include "chs_layer.h"
 #include "Entropy/Entropy.h"
 
+#define CHS_INCLUDE_SHADER_STR
+#include "assets/assets.h"
+
 namespace chs
 {
 	void ChessLayer::OnAttach()
@@ -20,7 +23,7 @@ namespace chs
 					et::AttachmentLoadOp::DontCare,
 					et::AttachmentStoreOp::DontCare,
 					et::ImageLayout::Undefined,
-					et::ImageLayout::TransferSrc
+					et::ImageLayout::ShaderReadOnly
 				}
 			};
 			createInfo.subpassDesc =
@@ -61,43 +64,46 @@ namespace chs
 			};
 			createInfo.vertexAttributes = et::Shader::BasicShaderCreateInfo.vertexAttributes;
 			createInfo.vertexBindings = et::Shader::BasicShaderCreateInfo.vertexBindings;
-			defaultShader = et::CreateShader("default.shader", createInfo);
+			std::stringstream ss(DATA_SHADER_STR);
+			defaultShader = et::CreateShader(ss, createInfo);
 		}
 
 		// textures
+		auto createInfo = et::TextureCreateInfo();
+		createInfo.format = et::TextureFormat::R8G8B8A8Unorm;
 		{
 			textures =
 			{
-				et::CreateTexture("assets/move_tile.png", et::TextureCreateInfo()),
+				et::CreateTexture("move_tile", 128, 128, DATA_MOVE_TILE, createInfo),
 
-				et::CreateTexture("assets/pawn.png", et::TextureCreateInfo()),
-				et::CreateTexture("assets/pawn_white.png", et::TextureCreateInfo()),
+				et::CreateTexture("pawn_black", 128, 128, DATA_BLACK_PAWN, createInfo),
+				et::CreateTexture("pawn_white", 128, 128, DATA_WHITE_PAWN, createInfo),
 
-				et::CreateTexture("assets/rook.png", et::TextureCreateInfo()),
-				et::CreateTexture("assets/rook_white.png", et::TextureCreateInfo()),
+				et::CreateTexture("rook_black", 128, 128, DATA_BLACK_ROOK, createInfo),
+				et::CreateTexture("rook_white", 128, 128, DATA_WHITE_ROOK, createInfo),
 
-				et::CreateTexture("assets/knight.png", et::TextureCreateInfo()),
-				et::CreateTexture("assets/knight_white.png", et::TextureCreateInfo()),
+				et::CreateTexture("knight_black", 128, 128, DATA_BLACK_KNIGHT, createInfo),
+				et::CreateTexture("knight_white", 128, 128, DATA_WHITE_KNIGHT, createInfo),
 
-				et::CreateTexture("assets/bishop.png", et::TextureCreateInfo()),
-				et::CreateTexture("assets/bishop_white.png", et::TextureCreateInfo())
+				et::CreateTexture("bishop_black", 128, 128, DATA_BLACK_BISHOP, createInfo),
+				et::CreateTexture("bishop_white", 128, 128, DATA_WHITE_BISHOP, createInfo)
 				,
-				et::CreateTexture("assets/queen.png", et::TextureCreateInfo()),
-				et::CreateTexture("assets/queen_white.png", et::TextureCreateInfo()),
+				et::CreateTexture("queen_black", 128, 128, DATA_BLACK_QUEEN, createInfo),
+				et::CreateTexture("queen_white", 128, 128, DATA_WHITE_QUEEN, createInfo),
 
-				et::CreateTexture("assets/king.png", et::TextureCreateInfo()),
-				et::CreateTexture("assets/king_white.png", et::TextureCreateInfo()),
+				et::CreateTexture("king_black", 128, 128, DATA_BLACK_KING, createInfo),
+				et::CreateTexture("king_white", 128, 128, DATA_WHITE_KING, createInfo),
 
 			};
-
 			defaultShader->SetTextures("textures", textures);
 		}
 		// initialize pipeline and framebuffer
 		Resize(800, 800);
 
 		// starting positions 
-		//tileManager.Load("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-		board = et::CreateRef<Board>("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1");
+		board = et::CreateRef<Board>("rnbqkb1r/pp2pppp/7n/1Ppp4/4P3/8/P1PP1PPP/RNBQKBNR w KQkq c6 0 4");
+		//board = et::CreateRef<Board>("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+		tileManager.board = board.get();
 		std::cout << *board << std::endl;
 	}
 
@@ -128,17 +134,9 @@ namespace chs
 		et::Renderer::Present(screen);
 	}
 
-	bool checkmate = false;
-
 	void ChessLayer::OnImGuiRender()
 	{
-		// tmp
-		if (checkmate)
-		{
-			ImGui::Begin("Info", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking);// | ImGuiWindowFlags_NoMove);
-			ImGui::Text("CHECKMATE");
-			ImGui::End();
-		}
+
 	}
 
 	void ChessLayer::OnEvent(et::Event& e)
@@ -179,7 +177,7 @@ namespace chs
 			et::TextureCreateInfo createInfo;
 			// swapchain format
 			createInfo.format = et::Renderer::GetSurfaceFormat();
-			createInfo.usageFlags = et::TextureUsageFlags_Sampled | et::TextureUsageFlags_ColorAttachment | et::TextureUsageFlags_TransferSrc;
+			createInfo.usageFlags = et::TextureUsageFlags_Sampled | et::TextureUsageFlags_ColorAttachment;
 			screen = et::CreateTexture("screen", width, height, createInfo);
 		}
 

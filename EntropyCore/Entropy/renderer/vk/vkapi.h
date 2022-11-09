@@ -111,7 +111,7 @@ namespace et
 		std::vector<Ref<VulkanFramebuffer>> mFramebuffers; 
 		VkRenderPass mImGuiRenderpass;
 
-		Ref<Texture> presentImage;
+		static Ref<Texture> presentImage;
 
 		std::vector<VkSemaphore> mRenderFinishedSemaphores;
 		std::vector<VkFence> mInFlightFences;
@@ -119,5 +119,6 @@ namespace et
 		VkDebugUtilsMessengerEXT mDebugUtilsMessenger;
 #endif
 		friend class RenderCommand;
+		friend class ImGuiLayer;
 	};
 }

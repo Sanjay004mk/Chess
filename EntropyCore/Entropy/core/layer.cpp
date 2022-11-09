@@ -7,6 +7,8 @@
 #include "Entropy/renderer/renderer.h"
 #include "layer.h"
 
+#include "Entropy/renderer/vk/vkapi.h"
+
 namespace et
 {
 	ImGuiLayer::ImGuiLayer()
@@ -84,6 +86,9 @@ namespace et
 		colors[ImGuiCol_TitleBgActive] = ImVec4{ 0.15f, 0.1505f, 0.151f, 1.0f };
 		colors[ImGuiCol_TitleBgCollapsed] = ImVec4{ 0.15f, 0.1505f, 0.151f, 1.0f };
 
+		// disable imgui.ini ( for chs )
+		io.IniFilename = nullptr;
+
         Renderer::ImGuiInit();
 	}
 
@@ -114,4 +119,36 @@ namespace et
     {
         Renderer::ImGuiEnd();
     }
+
+	// et::Renderer::Present() image gets displayed here
+	void ImGuiLayer::OnImGuiRender()
+	{
+		if (VulkanAPI::presentImage)
+		{
+			static ImGuiDockNodeFlags docknode_flags = ImGuiDockNodeFlags_None;
+
+			ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoDecoration;
+
+			{
+				ImGuiViewport* viewport = ImGui::GetMainViewport();
+				ImVec2 size = viewport->Size;
+				ImVec2 pos = viewport->Pos;
+				ImGui::SetNextWindowPos(pos);
+				ImGui::SetNextWindowSize(size);
+				ImGui::SetNextWindowViewport(viewport->ID);
+				ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+				ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+				ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.f, 0.f));
+				window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
+				window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
+				
+				ImGui::Begin("viewport", nullptr, window_flags);
+				ImGui::Image(VulkanAPI::presentImage->GetImGuiTextureID(), size, ImVec2(0, 1), ImVec2(1, 0));
+				ImGui::End();
+
+				ImGui::PopStyleVar(3);
+			}
+
+		}
+	}
 }

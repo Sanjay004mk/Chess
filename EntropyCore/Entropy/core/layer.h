@@ -69,6 +69,7 @@ namespace et
 		void OnDetach() override;
 		void OnUpdate(TimeStep delta) override;
 		void OnEvent(Event& rEvent) override;
+		void OnImGuiRender() override;
 	private:
 	};
 }

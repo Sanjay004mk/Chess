@@ -59,6 +59,9 @@ namespace chs
 
 namespace chs
 {
+	class Board;
+	struct Move;
+
 	class TileManager
 	{
 	public:
@@ -70,16 +73,20 @@ namespace chs
 		void DrawTiles();
 		void SetCamera(uint32_t viewportWidth, uint32_t viewportHeight);
 
+		Board* board;
+
 	private:
 		glm::vec2 ScreenPosToTilePos(const glm::vec2& screenPos);
 
 		float screenWidth, screenHeight;
 		et::OrthographicCamera camera;
 
-		std::vector<glm::vec2> moveTiles;
+		bool shouldMove = false;
+		std::unordered_map<glm::vec2, Move> moveTiles;
 
 		glm::vec2 hoveredPiecePos;
 		glm::vec2 clickedPiecePos;
+		glm::vec2 clickedPos;
 	};
 }
 

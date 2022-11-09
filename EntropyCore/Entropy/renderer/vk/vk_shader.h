@@ -9,44 +9,6 @@ namespace et
 {
 	class BufferArray;
 
-	/*class VulkanShader : public Shader
-	{
-	public:
-		VulkanShader(const std::string& fileName, const std::string& name = std::string(), VertexBindFn bind_fn = Shader::GetVertexBindDesc, VertexAttrFn attr_fn = Shader::GetVertexAttrDesc);
-		VulkanShader(const char* file_name, VkRenderPass render_pass, const ShaderCreateInfo& create_info = ShaderCreateInfo(), const std::string& name = std::string(), VertexBindFn bind_fn = Shader::GetVertexBindDesc, VertexAttrFn attr_fn = Shader::GetVertexAttrDesc);
-		~VulkanShader();
-
-		void CreateShaderModule(VkRenderPass render_pass, const ShaderCreateInfo& create_info);
-		void ResetPipeline(VkRenderPass render_pass, const ShaderCreateInfo& create_info);
-		void SetUniform(const std::string& uniform_name, const void* data);
-
-		operator VkPipeline() const { return pipeline; }
-		operator VkPipelineLayout() const { return pipeline_layout; }
-		VkDescriptorSet GetDescSet(int32_t i) const { return set[i]; }
-
-	private:
-		void Init(const char* file_name);
-		void ExtractAttributesAndUniforms(ShaderType stage, const std::string& shader_source);
-		void SetupDescriptors();
-		void DestroyPipeline();
-
-		static VkVertexInputBindingDescription GetVertexBindDesc();
-		static std::vector<VkVertexInputAttributeDescription> GetVertexAttrDesc();
-
-		std::string name;
-		std::unordered_map<ShaderType, std::vector<uint32_t>> shaderSPIRV;
-		std::unordered_map<ShaderType, std::unordered_map<uint32_t, std::pair<std::string, std::vector<ShaderData>>>> attributes;
-		std::unordered_map<ShaderType, std::unordered_map<uint32_t, std::pair<std::string, std::vector<ShaderData>>>> uniforms;
-
-		std::vector<VkDescriptorSet> set;
-		VkDescriptorPool pool = VK_NULL_HANDLE;
-		VkDescriptorSetLayout layout = VK_NULL_HANDLE;
-		VkPipeline pipeline = VK_NULL_HANDLE;
-		VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
-		std::unordered_map<std::string, uint32_t> buffer_indices;
-		std::vector<BufferArray*> buffers;
-	};*/
-
 	class VulkanShader : public Shader
 	{
 	public:

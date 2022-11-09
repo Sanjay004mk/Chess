@@ -357,7 +357,7 @@ namespace et
 		VkImageUsageFlags imageUsageFlags =
 			(createInfo.usageFlags != 0) ?
 			(VkImageUsageFlags)createInfo.usageFlags :
-			(VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+			(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
 
 		mpImage = new Image((uint32_t)width, (uint32_t)height, mip_levels, format, (VkSampleCountFlagBits)createInfo.sampleCount, VK_IMAGE_TILING_OPTIMAL, imageUsageFlags, (VkMemoryPropertyFlags)createInfo.memoryProperty);
 		mpImage->TransitionLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);

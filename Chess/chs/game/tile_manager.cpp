@@ -1,5 +1,7 @@
-#include "tile_manager.h"
 #include "Entropy/Entropy.h"
+
+#include "board.h"
+#include "tile_manager.h"
 
 #define MOVE_TILE_TEXTURE_INDEX 0
 
@@ -536,11 +538,6 @@ namespace chs
 
 namespace chs
 {
-	bool InsideBoard(const glm::vec2& pos)
-	{
-		return pos.x > 0.f && pos.x < 9.f &&
-			pos.y > 0.f && pos.y < 9.f;
-	}
 
 	void TileManager::DrawTiles()
 	{
@@ -557,26 +554,71 @@ namespace chs
 
 					auto tilePos = q.position + glm::vec2(4.5f);
 					if (tilePos == hoveredPiecePos)
-						q.color -= glm::vec3(0.1f);
+						q.color -= glm::vec3(0.17f);
 					if (tilePos == clickedPiecePos)
-						q.color -= glm::vec3(0.1f);
+						q.color -= glm::vec3(0.19f);
 
 					et::Renderer::DrawQuad(q);
 				}
 			}
 		}
+		// pieces
+		if (board)
+		{
+			q.color = glm::vec3(1.f);
+			auto& b = *board;
+			for (auto piece : b)
+			{
+				q.position = piece.position - glm::vec2(4.5f);
+				et::Renderer::DrawQuad(q, piece.type);
+			}
+
+			// captured pieces
+			q.size = glm::vec2(0.5f);
+			glm::vec2 blackPos = glm::vec2(4.25f, -3.75f);
+			glm::vec2 whitePos = glm::vec2(4.25f, 3.75f);
+			for (const auto& [index, type] : b.CapturedPieces())
+			{
+				if (IsWhite(type))
+				{
+					q.position = whitePos;
+					if (whitePos.y < 0.5f)
+					{
+						whitePos.y = 3.75f;
+						whitePos.x = 4.75f;
+					}
+					else
+						whitePos.y -= 0.5f;
+
+					et::Renderer::DrawQuad(q, type);
+				}
+				else
+				{
+					q.position = blackPos;
+					if (blackPos.y > -0.5f)
+					{
+						blackPos.y = -3.75f;
+						blackPos.x = 4.75f;
+					}
+					else
+						blackPos.y += 0.5f;
+
+					et::Renderer::DrawQuad(q, type);
+				}
+			}
+			q.size = glm::vec2(1.f);
+		}
 
 		// highlight moveTiles
 		{
 			q.color = glm::vec3(1.f);
-			for (auto& tile : moveTiles)
+			for (auto& [tile, move] : moveTiles)
 			{
 				q.position = tile - glm::vec2(4.5f);
 
 				et::Renderer::DrawQuad(q, MOVE_TILE_TEXTURE_INDEX);
 			}
 		}
-		
 	}
 
 	void TileManager::SetCamera(uint32_t viewportWidth, uint32_t viewportHeight)
@@ -601,12 +643,28 @@ namespace chs
 
 	void TileManager::OnMouseClick(const glm::vec2& mousePos)
 	{
-
+		clickedPos = ScreenPosToTilePos(mousePos);
+		if (moveTiles.count(clickedPos) == 0)
+		{
+			shouldMove = false;
+			clickedPiecePos = clickedPos;
+			moveTiles.clear();
+			if (board->IsPiece(clickedPos))
+				moveTiles = board->GetMoveTiles(clickedPiecePos);
+		}
+		else
+			shouldMove = true;
 	}
 
 	void TileManager::OnMouseRelease(const glm::vec2& mousePos)
 	{
-		clickedPiecePos = ScreenPosToTilePos(mousePos);
+		auto pos = ScreenPosToTilePos(mousePos);
+		if (pos != clickedPos || shouldMove)
+		{
+			if (moveTiles.count(pos) != 0)
+				board->MovePiece(moveTiles.at(pos));
+			moveTiles.clear();
+		}
 	}
 
 	glm::vec2 TileManager::ScreenPosToTilePos(const glm::vec2& screenPos)
@@ -618,6 +676,7 @@ namespace chs
 		mousePos.x /= (screenWidth / camera.width);
 		mousePos.x = std::floor(mousePos.x) + 0.5f;
 
+		mousePos.y = (screenHeight - mousePos.y);
 		mousePos.y -= (screenHeight / 2.f);
 		mousePos.y /= (screenHeight / camera.height);
 		mousePos.y = std::floor(mousePos.y) + 0.5f;

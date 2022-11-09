@@ -31,6 +31,8 @@ namespace et
 	uint32_t VulkanAPI::sImageIndex;
 	uint32_t VulkanAPI::sCurrentFrame;
 
+	Ref<Texture> VulkanAPI::presentImage;
+
 	std::vector<VkSemaphore> VulkanAPI::sImageAcquiredSempahores;
 	extern VkSemaphore RenderCommand_signalSemaphore;
 
@@ -555,11 +557,11 @@ namespace et
 		VkAttachmentDescription attachment = {};
 		attachment.format = sSurfaceDetails.format;
 		attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-		attachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+		attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 		attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 		attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 		attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		attachment.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
 		VkAttachmentReference color_attachment = {};
@@ -714,92 +716,28 @@ namespace et
 		mpImGuiCommandBuffers->Begin(sImageIndex);
 		auto& cb = (*mpImGuiCommandBuffers)[sImageIndex];
 
-		// clear image
-		VkClearColorValue clear_color = { 0.1f, 0.1f, 0.1f, 1.0f };
-
-		VkImageSubresourceRange image_subresource_range = {
-			VK_IMAGE_ASPECT_COLOR_BIT,                    // aspectMask
-			0,                                            // baseMipLevel
-			1,                                            // levelCount
-			0,                                            // baseArrayLayer
-			1                                             // layerCount
-		};
-
-		VkImageMemoryBarrier barrier_from_present_to_clear = {
-			VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,     // sType
-			nullptr,                                    // pNext
-			VK_ACCESS_MEMORY_READ_BIT,                  // srcAccessMask
-			VK_ACCESS_TRANSFER_WRITE_BIT,               // dstAccessMask
-			VK_IMAGE_LAYOUT_UNDEFINED,                  // oldLayout
-			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,       // newLayout
-			VK_QUEUE_FAMILY_IGNORED,				    // srcQueueFamilyIndex
-			VK_QUEUE_FAMILY_IGNORED,			        // dstQueueFamilyIndex
-			mSwapchainImages[sImageIndex],              // image
-			image_subresource_range                     // subresourceRange
-		};
-
-		VkImageMemoryBarrier barrier_from_clear_to_present = {
-				VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,     // sType
-				nullptr,                                    // pNext
-				VK_ACCESS_TRANSFER_WRITE_BIT,               // srcAccessMask
-				VK_ACCESS_MEMORY_READ_BIT,                  // dstAccessMask
-				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,       // oldLayout
-				VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,   // newLayout
-				VK_QUEUE_FAMILY_IGNORED,                    // srcQueueFamilyIndex
-				VK_QUEUE_FAMILY_IGNORED,                    // dstQueueFamilyIndex
-				mSwapchainImages[sImageIndex],              // image
-				image_subresource_range                     // subresourceRange
-		};
-
-		vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier_from_present_to_clear);
-
-		vkCmdClearColorImage(cb, mSwapchainImages[sImageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clear_color, 1, &image_subresource_range);
-
-		// present image
-		if (presentImage)
-		{
-			if (presentImage->Width() == sSurfaceDetails.extent.width &&
-				presentImage->Height() == sSurfaceDetails.extent.height &&
-				(VkFormat)presentImage->Format() == sSurfaceDetails.format)
-			{
-				VkImageCopy copyRegion{};
-				copyRegion.dstOffset = copyRegion.srcOffset = { 0 };
-				copyRegion.extent = { sSurfaceDetails.extent.width, sSurfaceDetails.extent.height, 1 };
-				copyRegion.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-				copyRegion.dstSubresource.baseArrayLayer = 0;
-				copyRegion.dstSubresource.layerCount = 1;
-				copyRegion.dstSubresource.mipLevel = 0;
-				copyRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-				copyRegion.srcSubresource.baseArrayLayer = 0;
-				copyRegion.srcSubresource.layerCount = 1;
-				copyRegion.srcSubresource.mipLevel = 0;
-
-				VkImage p = *(VulkanTexture*)presentImage.get();
-
-				vkCmdCopyImage(cb, p, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, mSwapchainImages[sImageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
-			}
-		}
-		vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier_from_clear_to_present);
+		VkClearValue clearColor{};
+		clearColor.color = { { 0.1f, 0.1f, 0.1f, 1.0f } };
 
 		VkRenderPassBeginInfo info{};
 		info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		info.framebuffer = *(mFramebuffers[sCurrentFrame]);
 		info.renderPass = mImGuiRenderpass;
 		info.renderArea.extent = sSurfaceDetails.extent;
-		info.clearValueCount = 0;
-		info.pClearValues = nullptr;
+		info.clearValueCount = 1;
+		info.pClearValues = &clearColor;
 
-		vkCmdBeginRenderPass((*mpImGuiCommandBuffers)[sImageIndex], &info, VK_SUBPASS_CONTENTS_INLINE);
+		vkCmdBeginRenderPass(cb, &info, VK_SUBPASS_CONTENTS_INLINE);
 
-		ImGui_ImplVulkan_RenderDrawData(data, (*mpImGuiCommandBuffers)[sImageIndex]);
+		ImGui_ImplVulkan_RenderDrawData(data, cb);
 
-		vkCmdEndRenderPass((*mpImGuiCommandBuffers)[sImageIndex]);
+		vkCmdEndRenderPass(cb);
 
 		VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
 		mpImGuiCommandBuffers->End(sImageIndex);
 
-		(*mpImGuiCommandBuffers)[sImageIndex].Submit(&RenderCommand_signalSemaphore, 1, &waitStage, &mRenderFinishedSemaphores[sCurrentFrame], 1, mInFlightFences[sCurrentFrame]);
+		cb.Submit(&RenderCommand_signalSemaphore, 1, &waitStage, &mRenderFinishedSemaphores[sCurrentFrame], 1, mInFlightFences[sCurrentFrame]);
 
 		presentImage.reset();
 	}

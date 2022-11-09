@@ -64,6 +64,8 @@ namespace et
 
 
 				mpImGuiLayer->Begin();
+				// present image from et::Renderer::Present()
+				mpImGuiLayer->OnImGuiRender();
 				for (Layer* pLayer : mLayers)
 					pLayer->OnImGuiRender();
 				mpImGuiLayer->End();
