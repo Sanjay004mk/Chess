@@ -714,23 +714,21 @@ namespace chs
 				{
 					int32_t dir_x = queenside ? -1 : 1;
 					int32_t x = dir_x;
-					int32_t i = -1;
-					while (position.Move(x, 0, i))
-					{
-						if (board->tiles[i])
-							if (IsWhite(board->tiles[i]) != isWhite || !IsRook(board->tiles[i]))
-								return;
-							else
-								break;
-
-						x += dir_x;
-					}
+					int32_t king = index + (queenside ? -2 : 2);
+					std::vector<int32_t> tiles;
 					if (queenside)
-						i += 2;
+						tiles = { index - 1, index - 2 , index - 3 };
 					else
-						i -= 1;
+						tiles = { index + 1, index + 2 };
 
-					moves.push_back(Move(index, i, 0, 0, 0, 1, 0));
+					for (auto tile : tiles)
+					{
+						if (board->tiles[tile] || board->IsAttacked(tile, ~(GetColor(board->tiles[index])) & 1u))
+							return;
+					}
+
+
+					moves.push_back(Move(index, king, 0, 0, 0, 1, 0));
 				}
 			};
 
@@ -742,8 +740,10 @@ namespace chs
 	}
 
 
-	bool Board::IsAttacked(int32_t index, Color by)
+	bool Board::IsAttacked(int32_t index, Color by) const
 	{
+		ET_DEBUG_ASSERT(index > -1 || index < 64);
+
 		int32_t tile_index = -1;
 		Position position(index);
 		int32_t pawn_offs = by == White ? 1 : -1;

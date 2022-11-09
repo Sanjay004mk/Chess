@@ -179,7 +179,7 @@ namespace chs
 		bool IsPiece(const glm::vec2& tile);
 		bool IsPiece(int32_t index);
 
-		bool IsAttacked(int32_t index, Color by);
+		bool IsAttacked(int32_t index, Color by) const;
 
 		PieceIterator begin() { PieceIterator it(0, tiles); if (!it) ++it; return it; }
 		PieceIterator end() { return PieceIterator(64, tiles); }
