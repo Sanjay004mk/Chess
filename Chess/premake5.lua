@@ -28,11 +28,19 @@ project "Chess"
         systemversion "latest"
 
     filter "configurations:Debug"
-        defines "CHS_DEBUG"
+        defines
+         {   
+            "CHS_DEBUG",
+            "ET_DEBUG",
+        }
         runtime "Debug"
         symbols "on"
 
     filter "configurations:Release"
-        defines "CHS_RELEASE"
+        defines 
+        {
+            "CHS_RELEASE",
+            "ET_DIST",
+        }
         runtime "Release"
         optimize "on"

@@ -180,17 +180,14 @@ namespace chs
 			if (IsMajor[piece])
 			{
 				SetBit(majorBitBoard[c], 1, index);
-				SetBit(majorBitBoard[2], 1, index);
 			}
 			else if (IsMinor[piece])
 			{
 				SetBit(minorBitBoard[c], 1, index);
-				SetBit(minorBitBoard[2], 1, index);
 			}
 			else
 			{
 				SetBit(pawnBitBoard[c], 1, index);
-				SetBit(pawnBitBoard[2], 1, index);
 			}
 		}
 		return true;
@@ -212,7 +209,7 @@ namespace chs
 
 		auto pos = (it - pieces[p].positions.begin());
 
-		// index is not the last element
+		// 'index' is not the last element
 		if (pos != (pieces[p].count - 1))
 		{
 			for (size_t i = pos; i < pieces[p].count; i++)
@@ -225,20 +222,11 @@ namespace chs
 		{
 			auto c = GetColor(p);
 			if (IsMajor[p])
-			{
 				SetBit(majorBitBoard[c], 0, index);
-				SetBit(majorBitBoard[2], 0, index);
-			}
 			else if (IsMinor[p])
-			{
 				SetBit(minorBitBoard[c], 0, index);
-				SetBit(minorBitBoard[2], 0, index);
-			}
 			else
-			{
 				SetBit(pawnBitBoard[c], 0, index);
-				SetBit(pawnBitBoard[2], 0, index);
-			}
 		}
 		return true;
 	}
@@ -271,26 +259,20 @@ namespace chs
 			if (IsMajor[p])
 			{
 				SetBit(majorBitBoard[c], 0, from);
-				SetBit(majorBitBoard[2], 0, from);
 
 				SetBit(majorBitBoard[c], 1, to);
-				SetBit(majorBitBoard[2], 1, to);
 			}
 			else if (IsMinor[p])
 			{
 				SetBit(minorBitBoard[c], 0, from);
-				SetBit(minorBitBoard[2], 0, from);
 
 				SetBit(minorBitBoard[c], 1, to);
-				SetBit(minorBitBoard[2], 1, to);
 			}
 			else
 			{
 				SetBit(pawnBitBoard[c], 0, from);
-				SetBit(pawnBitBoard[2], 0, from);
 
 				SetBit(pawnBitBoard[c], 1, to);
-				SetBit(pawnBitBoard[2], 1, to);
 			}
 		}
 
@@ -389,28 +371,10 @@ namespace chs
 
 	struct Position
 	{
-		Position(int32_t index) : index(index)
+		Position(int32_t index) : position(GetPositionFromIndex<int32_t>(index)) {}
+
+		bool Move(int32_t x, int32_t y, int32_t& index) const
 		{
-			auto imod8 = index % 8;
-
-			if (imod8 == 0)
-				left = false;
-			else if (imod8 == 7)
-				right = false;
-
-			if (index < 8)
-				down = false;
-			else if (index > 55)
-				up = false;
-
-			position = GetPositionFromIndex<int32_t>(index);
-		}
-
-		bool Move(int32_t x, int32_t y, int32_t& index)
-		{
-			if ((x < 0 && !left) || (x > 0 && !right) || (y > 0 && !up) || (y < 0 && !down))
-				return false;
-
 			auto newPos = position + glm::ivec2(x, y);
 
 			if (!InsideBoard(newPos))
@@ -426,9 +390,7 @@ namespace chs
 				   pos.y > 0 && pos.y < 9;
 		}
 
-		int32_t index;
 		glm::ivec2 position;
-		bool up = true, down = true, left = true, right = true;
 	};
 
 	std::vector<Move> PawnMoves(const Board* board, int32_t index)
@@ -499,6 +461,9 @@ namespace chs
 				}
 				else if (board->enPassant == index__)
 				{
+					if (IsWhite(board->tiles[EnPassantToPiece(board->enPassant)]) == isWhite)
+						valid = false;
+
 					enPassant = 1;
 					capture = 1;
 				}
@@ -528,29 +493,149 @@ namespace chs
 		return moves;
 	}
 
+	std::vector<Move> Slide(const Board* board, int32_t index, const glm::ivec2& direction)
+	{
+		auto start_index = index;
+		Position position(index);
+		bool isWhite = IsWhite(board->tiles[index]);
+		std::vector<Move> moves;
+
+		while (position.Move(direction.x, direction.y, index))
+		{
+			position.position += direction;
+
+			int32_t capture = 0;
+			if (board->tiles[index])
+			{
+				capture = 1;
+				if (!(IsWhite(board->tiles[index]) ^ isWhite))
+					break;
+			}
+			moves.push_back(Move(start_index, index, capture));
+
+			if (capture)
+				break;
+		}
+
+		return moves;
+	}
+
+	static void load(const Board* board, int32_t index, std::vector<Move>& moves, const glm::ivec2& direction)
+	{
+		auto temp = Slide(board, index, direction);
+		if (!temp.empty())
+			moves.insert(moves.end(), temp.begin(), temp.end());
+	}
+
 	std::vector<Move> RookMoves(const Board* board, int32_t index)
 	{
-		return {};
+		std::vector<Move> moves;
+
+		load(board, index, moves, glm::ivec2(1, 0));
+		load(board, index, moves, glm::ivec2(-1, 0));
+		load(board, index, moves, glm::ivec2(0, 1));
+		load(board, index, moves, glm::ivec2(0, -1));
+
+		return moves;
 	}
+
 
 	std::vector<Move> KnightMoves(const Board* board, int32_t index)
 	{
-		return {};
+		std::vector<Move> moves;
+		Position position(index);
+		auto load_knight = [&](bool isWhite, const glm::ivec2& offs)
+		{
+			int32_t end_index = -1;
+			if (position.Move(offs.x, offs.y, end_index))
+			{
+				int32_t capture = 0;
+				if (board->tiles[end_index])
+				{
+					capture = 1;
+					if (!(IsWhite(board->tiles[end_index]) ^ isWhite))
+						return;
+				}
+				moves.push_back(Move(index, end_index, capture));
+			}
+		};
+
+		bool isWhite = IsWhite(board->tiles[index]);
+
+		load_knight(isWhite, glm::ivec2( 1,  2));
+		load_knight(isWhite, glm::ivec2( 1, -2));
+		load_knight(isWhite, glm::ivec2(-1,  2));
+		load_knight(isWhite, glm::ivec2(-1, -2));
+
+		load_knight(isWhite, glm::ivec2( 2, -1));
+		load_knight(isWhite, glm::ivec2( 2,  1));
+		load_knight(isWhite, glm::ivec2(-2, -1));
+		load_knight(isWhite, glm::ivec2(-2,  1));
+
+		return moves;
 	}
 
 	std::vector<Move> BishopMoves(const Board* board, int32_t index)
 	{
-		return {};
+		std::vector<Move> moves;
+
+		load(board, index, moves, glm::ivec2(1, 1));
+		load(board, index, moves, glm::ivec2(-1, 1));
+		load(board, index, moves, glm::ivec2(-1,-1));
+		load(board, index, moves, glm::ivec2(1, -1));
+
+		return moves;
 	}
 
 	std::vector<Move> QueenMoves(const Board* board, int32_t index)
 	{
-		return {};
+		std::vector<Move> moves;
+
+		load(board, index, moves, glm::ivec2(1, 0));
+		load(board, index, moves, glm::ivec2(-1, 0));
+		load(board, index, moves, glm::ivec2(0, 1));
+		load(board, index, moves, glm::ivec2(0, -1));
+		load(board, index, moves, glm::ivec2(1, 1));
+		load(board, index, moves, glm::ivec2(-1, 1));
+		load(board, index, moves, glm::ivec2(-1, -1));
+		load(board, index, moves, glm::ivec2(1, -1));
+
+		return moves;
 	}
 
 	std::vector<Move> KingMoves(const Board* board, int32_t index)
 	{
-		return {};
+		std::vector<Move> moves;
+		Position position(index);
+		auto load_king = [&](bool isWhite, const glm::ivec2& offs)
+		{
+			int32_t end_index = -1;
+			if (position.Move(offs.x, offs.y, end_index))
+			{
+				int32_t capture = 0;
+				if (board->tiles[end_index])
+				{
+					capture = 1;
+					if (!(IsWhite(board->tiles[end_index]) ^ isWhite))
+						return;
+				}
+				moves.push_back(Move(index, end_index, capture));
+			}
+		};
+
+		bool isWhite = IsWhite(board->tiles[index]);
+
+		load_king(isWhite, glm::ivec2( 1,  0));
+		load_king(isWhite, glm::ivec2(-1,  0));
+		load_king(isWhite, glm::ivec2( 0,  1));
+		load_king(isWhite, glm::ivec2( 0, -1));
+
+		load_king(isWhite, glm::ivec2( 1, -1));
+		load_king(isWhite, glm::ivec2( 1,  1));
+		load_king(isWhite, glm::ivec2(-1, -1));
+		load_king(isWhite, glm::ivec2(-1,  1));
+
+		return moves;
 	}
 
 }

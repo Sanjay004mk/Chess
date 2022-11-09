@@ -205,15 +205,16 @@ namespace chs
 		size_t hashKey = 0;
 
 		// bit boards 
-		uint64_t pawnBitBoard[3];
-		uint64_t majorBitBoard[3];
-		uint64_t minorBitBoard[3];
+		uint64_t pawnBitBoard[2];
+		uint64_t majorBitBoard[2];
+		uint64_t minorBitBoard[2];
 
 		template <typename ostream>
 		friend ostream& operator<<(ostream& stream, const Board& board);
 
 		friend struct PieceIterator;
 
+		friend std::vector<Move> Slide(const Board* board, int32_t index, const glm::ivec2& direction);
 		friend std::vector<Move> PawnMoves(const Board* board, int32_t index);
 		friend std::vector<Move> RookMoves(const Board* board, int32_t index);
 		friend std::vector<Move> KnightMoves(const Board* board, int32_t index);
@@ -247,7 +248,7 @@ namespace chs
 
 	inline int32_t PieceToEnPassant(int32_t piece)
 	{
-		return (piece < 24) ? piece - 8 : piece + 8;
+		return (piece < 32) ? piece - 8 : piece + 8;
 	}
 
 	template <typename ostream>
