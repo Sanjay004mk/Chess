@@ -77,6 +77,7 @@ namespace chs
 
 	private:
 		glm::vec2 ScreenPosToTilePos(const glm::vec2& screenPos);
+		glm::vec2 ScreenPosToWorldPos(const glm::vec2& screenPos);
 
 		float screenWidth, screenHeight;
 		et::OrthographicCamera camera;
@@ -87,6 +88,9 @@ namespace chs
 		glm::vec2 hoveredPiecePos;
 		glm::vec2 clickedPiecePos;
 		glm::vec2 clickedPos;
+		glm::vec2 clickedPieceDragOffset;
+		glm::vec2 mousePos;
+		PieceType dragPiece = 0;
 	};
 }
 

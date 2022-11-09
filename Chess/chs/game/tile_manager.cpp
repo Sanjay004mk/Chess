@@ -38,8 +38,15 @@ namespace chs
 			auto& b = *board;
 			for (auto piece : b)
 			{
+				if (piece.position == clickedPos && dragPiece)
+					continue;
 				q.position = piece.position - glm::vec2(4.5f);
 				et::Renderer::DrawQuad(q, piece.type);
+			}
+			if (dragPiece)
+			{
+				q.position = mousePos + clickedPieceDragOffset;
+				et::Renderer::DrawQuad(q, dragPiece);
 			}
 
 			// captured pieces
@@ -108,11 +115,14 @@ namespace chs
 	void TileManager::OnUpdate(et::TimeStep ts)
 	{
 		hoveredPiecePos = ScreenPosToTilePos(et::Input::GetMousePosition());
+		mousePos = ScreenPosToWorldPos(et::Input::GetMousePosition());
 	}
 
 	void TileManager::OnMouseClick(const glm::vec2& mousePos)
 	{
 		clickedPos = ScreenPosToTilePos(mousePos);
+		clickedPieceDragOffset = (clickedPos - glm::vec2(4.5f)) - ScreenPosToWorldPos(mousePos);
+		dragPiece = board->GetTile(clickedPos);
 		if (moveTiles.count(clickedPos) == 0)
 		{
 			shouldMove = false;
@@ -134,23 +144,31 @@ namespace chs
 				board->MovePiece(moveTiles.at(pos));
 			moveTiles.clear();
 		}
+		dragPiece = 0;
 	}
 
 	glm::vec2 TileManager::ScreenPosToTilePos(const glm::vec2& screenPos)
 	{
-		// convert to (1, 1)[top-left] -> (8, 8)[bottom-right] space
+		auto mousePos = ScreenPosToWorldPos(screenPos);
+		mousePos.x = std::floor(mousePos.x) + 0.5f;
+		mousePos.y = std::floor(mousePos.y) + 0.5f;
+
+		mousePos += glm::vec2(4.5f);
+
+		return mousePos;
+	}
+
+	glm::vec2 TileManager::ScreenPosToWorldPos(const glm::vec2& screenPos)
+	{
+		// convert to (1, 1)[bottom-left] -> (8, 8)[top-right] space
 		auto mousePos = screenPos;
 
 		mousePos.x -= screenWidth / 2.f;
 		mousePos.x /= (screenWidth / camera.width);
-		mousePos.x = std::floor(mousePos.x) + 0.5f;
 
 		mousePos.y = (screenHeight - mousePos.y);
 		mousePos.y -= (screenHeight / 2.f);
 		mousePos.y /= (screenHeight / camera.height);
-		mousePos.y = std::floor(mousePos.y) + 0.5f;
-
-		mousePos += glm::vec2(4.5f);
 
 		return mousePos;
 	}
