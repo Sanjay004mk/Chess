@@ -42,6 +42,11 @@ namespace chs
 
 	struct PieceList
 	{
+		PieceList()
+		{
+			for (auto& p : positions)
+				p = -1;
+		}
 		// number of pieces of 'this' type on the board
 		uint32_t count = 0;
 		// index ( 0 - 63 ) of count pieces indicating their position on the board. 
@@ -100,6 +105,19 @@ namespace chs
 		return piece > 10 && piece < 13;
 	}
 
+	inline bool SamePiece(PieceType left, PieceType right)
+	{
+		if (left == right)
+			return true;
+
+		if (right % 2 == 1)
+			std::swap(left, right);
+		else if (left % 2 != 1)
+			return false;
+
+		return right - left == 1;
+	}
+
 	inline bool CanCastle(int32_t castlePerm, Color color, bool QueenSide)
 	{
 		int32_t mask = 1;
@@ -111,6 +129,19 @@ namespace chs
 			mask = mask << 1;
 
 		return castlePerm & mask;
+	}
+
+	inline void ClearCastle(int32_t& castlePerm, Color color, bool QueenSide)
+	{
+		int32_t mask = 1;
+		// white king
+		if (color)
+			mask = mask << 2;
+
+		if (QueenSide)
+			mask = mask << 1;
+
+		castlePerm  = castlePerm & ~mask;
 	}
 
 	template <typename T = float>

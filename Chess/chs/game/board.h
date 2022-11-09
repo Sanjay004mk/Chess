@@ -175,7 +175,11 @@ namespace chs
 		bool Valid();
 
 		PieceType GetTile(const glm::vec2& tile);
+		PieceType GetTile(int32_t index);
 		bool IsPiece(const glm::vec2& tile);
+		bool IsPiece(int32_t index);
+
+		bool IsAttacked(int32_t index, Color by);
 
 		PieceIterator begin() { PieceIterator it(0, tiles); if (!it) ++it; return it; }
 		PieceIterator end() { return PieceIterator(64, tiles); }
@@ -185,8 +189,6 @@ namespace chs
 		size_t hash() const;
 
 	private:
-		PieceType GetTile(int32_t index);
-		bool IsPiece(int32_t index);
 		bool AddPiece(int32_t index, PieceType piece);
 		bool RemovePiece(int32_t index, PieceType* piece = nullptr);
 		bool ShiftPiece(int32_t from, int32_t to, PieceType* piece = nullptr);
@@ -201,6 +203,8 @@ namespace chs
 		Color turn = 0;
 		int32_t enPassant = 64;
 		int32_t castlePermission = 0;
+		int32_t fiftyMove = 0;
+		int32_t fullMoves = 0;
 
 		size_t hashKey = 0;
 
@@ -314,6 +318,8 @@ namespace chs
 			}
 		}
 		stream << std::endl;
+		stream << "fifty moves: " << std::hex << board.fiftyMove << std::endl;
+		stream << "full moves: " << std::hex << board.fullMoves << std::endl;
 		stream << "hash: 0x" << std::hex << board.hashKey << std::endl;
 
 		return stream;

@@ -158,6 +158,23 @@ namespace chs
 			i += 2;
 
 		// 50 moves and full moves
+		char str[3] = { fen_string[i], fen_string[++i], 0 };
+		if (fen_string[i++] == ' ')
+			str[1] = 0;
+		else
+			i++;
+
+		fiftyMove = std::atoi(str);
+
+		str[0] = fen_string[i];
+
+		if (i < fen_string.size() - 1)
+			str[1] = fen_string[i + 1];
+		else
+			str[1] = 0;
+
+		fullMoves = std::atoi(str);
+
 	}
 
 	bool Board::Valid()
@@ -306,18 +323,44 @@ namespace chs
 
 	bool Board::MovePiece(Move move)
 	{
+		fiftyMove++;
 		if (!move.Valid())
 			return false;
 
 		if (move.Capture())
 		{
+			fiftyMove = 0;
 			auto cap_tile = move.EnPassant() ? EnPassantToPiece(enPassant) : move.To();
 			PieceType rem_piece = 0;
 			if (!RemovePiece(cap_tile, &rem_piece))
 				return false;
 
+			// castle rights lost
+			if (IsRook(rem_piece) && (cap_tile == 7 || cap_tile > 56 || cap_tile == 0 || cap_tile == 63))
+				ClearCastle(castlePermission, GetColor(rem_piece), cap_tile % 8 == 0);
+
 			capturedTiles.push_back({ cap_tile, rem_piece });
 		}
+		else if (move.Castle())
+		{
+			bool queenSide = ((move.To() % 8) < 4);
+			ClearCastle(castlePermission, GetColor(tiles[move.From()]), queenSide);
+			int32_t rook_from = move.To() + (queenSide ? -2 : 1);
+			int32_t rook_to = move.To() + (queenSide ? 1 : -1);
+			if (!ShiftPiece(rook_from, rook_to))
+				return false;
+
+		}
+
+		if (IsPawn(tiles[move.From()]))
+			fiftyMove = 0;
+		// castle rights lost
+		else if (IsKing(tiles[move.From()]))
+		{
+			ClearCastle(castlePermission, GetColor(tiles[move.From()]), true);
+			ClearCastle(castlePermission, GetColor(tiles[move.From()]), false);
+		}
+
 
 		if (move.PawnStart())
 			enPassant = PieceToEnPassant(move.To());
@@ -365,6 +408,8 @@ namespace chs
 		hash_combine(seed, hasher(enPassant));
 		hash_combine(seed, hasher(castlePermission));
 		hash_combine(seed, hasher(turn));
+		hash_combine(seed, hasher(fiftyMove));
+		hash_combine(seed, hasher(fullMoves));
 
 		return seed;
 	}
@@ -635,7 +680,135 @@ namespace chs
 		load_king(isWhite, glm::ivec2(-1, -1));
 		load_king(isWhite, glm::ivec2(-1,  1));
 
+		// castle
+		{
+			auto check_castle = [&](bool queenside)
+			{
+				if (CanCastle(board->castlePermission, GetColor(board->tiles[index]), queenside))
+				{
+					int32_t dir_x = queenside ? -1 : 1;
+					int32_t x = dir_x;
+					int32_t i = -1;
+					while (position.Move(x, 0, i))
+					{
+						if (board->tiles[i])
+							if (IsWhite(board->tiles[i]) != isWhite || !IsRook(board->tiles[i]))
+								return;
+							else
+								break;
+
+						x += dir_x;
+					}
+					if (queenside)
+						i += 2;
+					else
+						i -= 1;
+
+					moves.push_back(Move(index, i, 0, 0, 0, 1, 0));
+				}
+			};
+
+			check_castle(true);
+			check_castle(false);
+		}
+
 		return moves;
+	}
+
+
+	bool Board::IsAttacked(int32_t index, Color by)
+	{
+		int32_t tile_index = -1;
+		Position position(index);
+		int32_t pawn_offs = by == White ? 1 : -1;
+
+		{
+			// pawns
+			std::vector<int32_t> x = { 1, -1 };
+			for (auto& __x : x)
+			{
+				if (position.Move(pawn_offs, __x, tile_index))
+				{
+					if (tiles[tile_index])
+						if ((GetColor(tiles[tile_index]) == by) && 
+							(IsPawn(tiles[tile_index]) || IsBishop(tiles[tile_index]) || IsQueen(tiles[tile_index])))
+							return true;
+				}
+
+			}
+
+			std::vector<glm::ivec2> dirs =
+			{
+			// knights
+				glm::ivec2( 1,  2),
+				glm::ivec2(-1,  2),
+				glm::ivec2( 1, -2),
+				glm::ivec2(-1, -2),
+
+				glm::ivec2( 2,  1),
+				glm::ivec2(-2,  1),
+				glm::ivec2( 2, -1),
+				glm::ivec2(-2, -1),
+			};
+			for (auto& dir : dirs)
+			{
+				if (position.Move(dir.x, dir.y, tile_index))
+				{
+					if (tiles[tile_index])
+						if ((GetColor(tiles[tile_index]) == by) &&
+							(IsKnight(tiles[tile_index])))
+							return true;
+				}
+			}
+		}
+
+		bool attacked = false;
+		auto slide = [&](const glm::ivec2& direction, PieceType other)
+		{
+			auto copy_pos = position;
+			// check king
+			{
+				if (copy_pos.Move(direction.x, direction.y, tile_index))
+				{
+					if (tiles[tile_index])
+					{
+						if (((GetColor(tiles[tile_index]) == by)) && 
+							(SamePiece(tiles[tile_index], other) || IsQueen(tiles[tile_index]) || IsKing(tiles[tile_index])))
+								attacked = true;	
+						return;
+					}
+					copy_pos.position += direction;
+				}
+			}
+
+			while (copy_pos.Move(direction.x, direction.y, tile_index))
+			{
+				if (tiles[tile_index])
+				{
+					if ((GetColor(tiles[tile_index]) == by) &&
+						(SamePiece(tiles[tile_index], other) || IsQueen(tiles[tile_index])))
+						attacked = true;
+					break;
+				}
+				copy_pos.position += direction;
+			}
+		};
+
+#define check(x, y) slide(x, y); if (attacked) return true
+
+		check(glm::ivec2( 1,  0), WhiteRook);
+		check(glm::ivec2(-1,  0), WhiteRook);
+		check(glm::ivec2( 0,  1), WhiteRook);
+		check(glm::ivec2( 0, -1), WhiteRook);
+
+		check(glm::ivec2( 1,  1), WhiteBishop);
+		check(glm::ivec2( 1, -1), WhiteBishop);
+		check(glm::ivec2(-1,  1), WhiteBishop);
+		check(glm::ivec2(-1, -1), WhiteBishop);
+
+#undef check
+
+		return false;
 	}
 
 }

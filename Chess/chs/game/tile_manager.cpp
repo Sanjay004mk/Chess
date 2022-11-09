@@ -133,6 +133,10 @@ namespace chs
 		}
 		else
 			shouldMove = true;
+
+		auto idx = GetIndexFromPosition(clickedPos);
+		auto [file, rank] = IndexToFileRank(idx);
+		ET_LOG_INFO("{}{} attacked: {}", file, rank, board->IsAttacked(idx, !GetColor(board->GetTile(idx))));
 	}
 
 	void TileManager::OnMouseRelease(const glm::vec2& mousePos)
