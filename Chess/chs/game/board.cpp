@@ -4,9 +4,14 @@
 
 namespace chs
 {
+	std::vector<Move> EmptyMoves(const Board* board, int32_t index)
+	{
+		return {};
+	}
+
 	GetMoveFn GetMoves[13] =
 	{
-		nullptr,
+		EmptyMoves,
 
 		PawnMoves,
 		PawnMoves,
@@ -301,7 +306,11 @@ namespace chs
 		if (!InsideBoard(position))
 			return {};
 
-		auto moves = GetMoveTiles(GetIndexFromPosition(position));
+		auto idx = GetIndexFromPosition(position);
+		if (GetColor(tiles[idx]) != turn)
+			return {};
+
+		auto moves = GetMoveTiles(idx);
 		std::unordered_map<glm::vec2, Move> tiles;
 		for (auto& move : moves)
 		{
@@ -314,18 +323,16 @@ namespace chs
 
 	std::vector<Move> Board::GetMoveTiles(int32_t position)
 	{
-		auto fn = GetMoves[tiles[position]];
-		if (fn)
-			return fn(this, position);
-
-		return {};
+		return GetMoves[tiles[position]](this, position);
 	}
 
 	bool Board::MovePiece(Move move)
 	{
-		fiftyMove++;
 		if (!move.Valid())
 			return false;
+
+		fiftyMove++;
+		turn = (~turn & 1u);
 
 		if (move.Capture())
 		{
@@ -367,7 +374,26 @@ namespace chs
 		else
 			enPassant = 64;
 
-		return ShiftPiece(move.From(), move.To());
+		if (!ShiftPiece(move.From(), move.To()))
+			return false;
+
+		if (IsAttacked(pieces[BlackKing + turn].positions[0], (~turn & 1u)))
+		{
+			auto moves = GetMoves[BlackKing](this, pieces[BlackKing + turn].positions[0]);
+			bool checkmate = true;
+			for (auto& move : moves)
+			{
+				if (!IsAttacked(move.To(), (~turn & 1u)))
+				{
+					checkmate = false;
+					break;
+				}
+			}
+			if (checkmate)
+				ET_LOG_INFO("CHECKMATE");
+		}
+
+		return true;
 	}
 
 	PieceType Board::GetTile(const glm::vec2& tile)
@@ -731,15 +757,15 @@ namespace chs
 				{
 					if (tiles[tile_index])
 						if ((GetColor(tiles[tile_index]) == by) && 
-							(IsPawn(tiles[tile_index]) || IsBishop(tiles[tile_index]) || IsQueen(tiles[tile_index])))
+							(IsPawn(tiles[tile_index]) || IsBishop(tiles[tile_index]) || IsQueen(tiles[tile_index]) || IsKing(tiles[tile_index])))
 							return true;
 				}
 
 			}
 
+			// knights
 			std::vector<glm::ivec2> dirs =
 			{
-			// knights
 				glm::ivec2( 1,  2),
 				glm::ivec2(-1,  2),
 				glm::ivec2( 1, -2),
