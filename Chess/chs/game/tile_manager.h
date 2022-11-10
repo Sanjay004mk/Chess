@@ -18,11 +18,14 @@ namespace chs
 		void DrawTiles();
 		void SetCamera(uint32_t viewportWidth, uint32_t viewportHeight);
 
+		glm::vec2 ScreenPosToTilePos(const glm::vec2& screenPos);
+		glm::vec2 ScreenPosToWorldPos(const glm::vec2& screenPos);
+		glm::vec2 WorldPosToScreenPos(const glm::vec2& worldPos);
+		float WorldToScreenUnit();
+
 		Board* board;
 
 	private:
-		glm::vec2 ScreenPosToTilePos(const glm::vec2& screenPos);
-		glm::vec2 ScreenPosToWorldPos(const glm::vec2& screenPos);
 
 		float screenWidth, screenHeight;
 		et::OrthographicCamera camera;

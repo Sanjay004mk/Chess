@@ -173,4 +173,23 @@ namespace chs
 		return mousePos;
 	}
 
+	glm::vec2 TileManager::WorldPosToScreenPos(const glm::vec2& worldPos)
+	{
+		auto mousePos = worldPos;
+
+		mousePos.x *= (screenWidth / camera.width);
+		mousePos.x += screenWidth / 2.f;
+
+		mousePos.y *= (screenHeight / camera.height);
+		mousePos.y += (screenHeight / 2.f);
+		mousePos.y = (screenHeight - mousePos.y);
+
+		return mousePos;
+	}
+
+	float TileManager::WorldToScreenUnit()
+	{
+		return (screenWidth / camera.width);
+	}
+
 }

@@ -243,6 +243,8 @@ namespace chs
 		PieceIterator end() { return PieceIterator(64, tiles); }
 
 		const auto& CapturedPieces() const { return capturedTiles; }
+		auto Full() const { return fullMoves; }
+		auto Fifty() const { return fiftyMove; }
 
 		size_t hash() const;
 

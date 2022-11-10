@@ -51,7 +51,7 @@ namespace et
 		ImFontConfig fontConfig;
 		fontConfig.GlyphExtraSpacing = ImVec2(1.f, 0.f);
 		fontConfig.FontDataOwnedByAtlas = false;
-		ImFont* RobotoRegular = io.Fonts->AddFontFromMemoryTTF((void*)gRobotoRegular.data(), (int32_t)(gRobotoRegular.size() * sizeof(uint8_t)), 16.0f, &fontConfig);
+		ImFont* RobotoRegular = io.Fonts->AddFontFromMemoryTTF((void*)gRobotoRegular.data(), (int32_t)(gRobotoRegular.size() * sizeof(uint8_t)), 30.0f, &fontConfig);
 		ImFont* CascadiaMono = io.Fonts->AddFontFromMemoryTTF((void*)gCascadiaMono.data(), (int32_t)(gCascadiaMono.size() * sizeof(uint8_t)), 18.0f, &fontConfig);
 		io.FontDefault = RobotoRegular;
 
@@ -125,8 +125,6 @@ namespace et
 	{
 		if (VulkanAPI::presentImage)
 		{
-			static ImGuiDockNodeFlags docknode_flags = ImGuiDockNodeFlags_None;
-
 			ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoDecoration;
 
 			{

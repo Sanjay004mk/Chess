@@ -6,6 +6,8 @@
 #define CHS_INCLUDE_SHADER_STR
 #include "assets/assets.h"
 
+#define CLEAR_COLOR 0.25f, 0.21f, 0.23f
+
 namespace chs
 {
 	void ChessLayer::OnAttach()
@@ -118,7 +120,7 @@ namespace chs
 
 		defaultShader->SetUniform("proj", tileManager.GetProjection());
 		et::RenderCommand::StartCommandBuffer();
-		et::RenderCommand::SetClearColor(glm::vec4(0.25, 0.21, 0.23, 1.0), 0);
+		et::RenderCommand::SetClearColor(glm::vec4(CLEAR_COLOR, 1.0f), 0);
 
 		et::Renderer::BeginRenderpass(renderpass, framebuffer);
 		et::Renderer::BindPipeline(pipeline);
@@ -136,7 +138,80 @@ namespace chs
 
 	void ChessLayer::OnImGuiRender()
 	{
+		ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoDecoration;
+		window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
+		window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
 
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.f, 0.f));
+		ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(CLEAR_COLOR, 1.f));
+		ImGuiViewport* viewport = ImGui::GetMainViewport();
+		ImVec2 viewport_size = viewport->Size;
+		ImVec2 viewport_pos = viewport->Pos;
+		{
+
+			{
+				glm::vec2 pos = tileManager.WorldPosToScreenPos(glm::vec2(-4.5f, 3.5f));
+				pos.x -= ImGui::GetFontSize() / 2.f;
+				pos.y -= ImGui::GetFontSize() / 2.f;
+
+				char prstr[2] = { 0 };
+				prstr[0] = '8';
+				while (prstr[0] >= '1')
+				{
+					ImGui::SetNextWindowPos(ImVec2(viewport_pos.x + pos.x, viewport_pos.y + pos.y));
+					ImGui::Begin(prstr, nullptr, window_flags);
+					ImGui::Text("%c", prstr[0]);
+					ImGui::End();
+					pos.y += tileManager.WorldToScreenUnit();
+					prstr[0]--;
+				}
+
+				prstr[0] = 'A';
+				pos.x += tileManager.WorldToScreenUnit();
+				while (prstr[0] <= 'H')
+				{
+					ImGui::SetNextWindowPos(ImVec2(viewport_pos.x + pos.x, viewport_pos.y + pos.y));
+					ImGui::Begin(prstr, nullptr, window_flags);
+					ImGui::Text("%c", prstr[0]);
+					ImGui::End();
+					pos.x += tileManager.WorldToScreenUnit();
+					prstr[0]++;
+				}
+			}
+		}
+
+		{
+			bool wide = viewport_size.x / viewport_size.y > 1.66f;
+			glm::vec2 fullmove_pos = tileManager.WorldPosToScreenPos(glm::vec2(-3.5f, 4.7f));
+			glm::vec2 fiftymove_pos = tileManager.WorldPosToScreenPos(glm::vec2(0.5f, 4.7f));
+			std::string fulstr{}, fifstr{};
+			fulstr = fmt::format("Moves: {}", board->Full());
+			fifstr = fmt::format("Fifty Move: {}", board->Fifty());
+			if (wide)
+			{
+				fullmove_pos = tileManager.WorldPosToScreenPos(glm::vec2(5.5f, 0.7f));
+				fiftymove_pos = tileManager.WorldPosToScreenPos(glm::vec2(5.5f, -0.3f));
+				float extra = (viewport_size.x - tileManager.WorldPosToScreenPos(glm::vec2(5.5f, 0.f)).x) / 2.f;
+
+				fullmove_pos.x += extra - (ImGui::CalcTextSize(fulstr.c_str()).x / 2.f);
+				fiftymove_pos.x += extra - (ImGui::CalcTextSize(fifstr.c_str()).x / 2.f);
+			}
+
+			ImGui::SetNextWindowPos(ImVec2(viewport_pos.x + fullmove_pos.x, viewport_pos.y + fullmove_pos.y));
+			ImGui::Begin(fulstr.c_str(), nullptr, window_flags);
+			ImGui::Text("%s", fulstr.c_str());
+			ImGui::End();
+
+			ImGui::SetNextWindowPos(ImVec2(viewport_pos.x + fiftymove_pos.x, viewport_pos.y + fiftymove_pos.y));
+			ImGui::Begin(fifstr.c_str(), nullptr, window_flags);
+			ImGui::Text("%s", fifstr.c_str());
+			ImGui::End();
+		}
+
+		ImGui::PopStyleVar(3);
+		ImGui::PopStyleColor();
 	}
 
 	void ChessLayer::OnEvent(et::Event& e)

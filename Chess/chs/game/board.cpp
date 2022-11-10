@@ -384,6 +384,21 @@ namespace chs
 			ClearCastle(castlePermission, GetColor(tiles[move.From()]), true);
 			ClearCastle(castlePermission, GetColor(tiles[move.From()]), false);
 		}
+		else if (IsRook(tiles[move.From()]))
+		{
+			int32_t castle = 0;
+			int32_t from = move.From();
+			if (from == 0)
+				castle = CastleWhiteQueen;
+			else if (from == 7)
+				castle = CastleWhiteKing;
+			else if (from == 56)
+				castle = CastleBlackQueen;
+			else if (from == 63)
+				castle = CastleBlackKing;
+
+			castlePermission ^= castle;
+		}
 
 		if (move.PawnStart())
 			enPassant = PieceToEnPassant(move.To());
@@ -507,13 +522,11 @@ namespace chs
 		auto hasher = std::hash<size_t>();
 		for (int32_t i = 0; i < 64; i++)
 			if (tiles[i])
-				hash_combine(seed, hasher(tiles[i] + i));
+				hash_combine(seed, hasher((size_t)tiles[i] | (size_t)(i << 3)));
 			
 		hash_combine(seed, hasher(enPassant));
 		hash_combine(seed, hasher(castlePermission));
 		hash_combine(seed, hasher(turn));
-		hash_combine(seed, hasher(fiftyMove));
-		hash_combine(seed, hasher(fullMoves));
 
 		return seed;
 	}
@@ -801,7 +814,13 @@ namespace chs
 					int32_t king = index + (queenside ? -2 : 2);
 					std::vector<int32_t> tiles;
 					if (queenside)
-						tiles = { index - 1, index - 2 , index - 3 };
+					{
+						tiles = { index - 1, index - 2 };
+						// queen side a2 / h2 can be attacked for castling
+						// so check if it isn't empty
+						if (board->tiles[index - 3])
+							return;
+					}
 					else
 						tiles = { index + 1, index + 2 };
 
