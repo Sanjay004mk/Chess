@@ -297,7 +297,20 @@ namespace chs
 
 	inline int32_t GetBit(uint64_t bit_board, int32_t position)
 	{
-		return bit_board & (1ull << position);
+		return (bit_board & (1ull << position)) >> position;
+	}
+
+	inline int32_t GetNumBits(uint64_t bit_board)
+	{
+		int32_t num = 0;
+		while (bit_board)
+		{
+			if (bit_board & 1ull)
+				num++;
+			
+			bit_board = (bit_board >> 1);
+		}
+		return num;
 	}
 
 	inline 	bool InsideBoard(const glm::vec2& pos)
@@ -320,14 +333,18 @@ namespace chs
 	ostream& operator<<(ostream& stream, const Move& move)
 	{
 		stream << "Move: [ " << "from: " << IndexToStr(move.From()) << ", to: " << IndexToStr(move.To()) << ", en passant: " << move.EnPassant();
-		stream << ", castle: " << move.Castle() << ", capture: " << move.Capture() << " ]";
+		stream << ", castle: " << move.Castle() << ", capture: " << move.Capture();
+		move.Valid() ? stream << " (Valid)" : stream << " (Invalid)";
+		stream << " ]";
 		return stream;
  	}
 
 	template <typename ostream>
 	ostream& operator<<(ostream& stream, const Board& board)
 	{
-		stream << std::endl << "board" << std::endl;
+		stream << std::endl << "board";
+		board.Valid() ? stream << " (Valid)" : stream << " (Invalid)";
+		stream << std::endl;
 		for (int32_t i = 63; i > -1; i--)
 		{
 			if (i % 8 == 7)

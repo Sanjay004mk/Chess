@@ -89,6 +89,32 @@ namespace chs
 
 	bool Move::Valid() const
 	{
+		if (!data)
+			return false;
+
+		auto from = From();
+		auto to = To();
+		auto enPassant = EnPassant();
+		auto castle = Castle();
+		auto capture = Capture();
+		auto promote = PromotedTo();
+
+		if (from > 63 || from < 0 || to > 63 || to < 0)
+			return false;
+
+		if (enPassant)
+			if (to < 16 || (to > 23 && to < 33) || to > 55)
+				return false;
+
+		if (castle)
+		{
+			if (!(from == 4 || from == 60))
+				return false;
+
+			if (!(to == 2 || to == 6 || to == 58 || to == 62))
+				return false;
+		}
+
 		return true;
 	}
 
@@ -111,14 +137,9 @@ namespace chs
 			if (std::isalpha(c))
 			{
 				pieceIndex++;
-				tiles[pieceIndex] = CharToPiece[c];
-				if (tiles[pieceIndex])
-				{
-					// get piece list of current piece
-					auto& piece = pieces[tiles[pieceIndex]];
-					// set position of last piece in piece list and increment piece count
-					piece.positions[piece.count++] = pieceIndex;
-				}
+				auto piece = CharToPiece[c];
+				if (piece)
+					AddPiece(pieceIndex, piece);
 			}
 			else
 			{
@@ -191,7 +212,62 @@ namespace chs
 
 	bool Board::Valid() const
 	{
-		return false;
+		if (pieces[BlackKing].count != 1 || pieces[WhiteKing].count != 1)
+			return false;
+
+		size_t pieceCount = capturedTiles.size();
+		std::vector<int32_t> piecesCheck[13];
+		for (int32_t i = 0; i < 64; i++)
+		{
+			if (tiles[i])
+			{
+				auto piece = tiles[i];
+				pieceCount++;
+				piecesCheck[piece].push_back(i);
+
+				if (!IsKing(piece))
+				{
+					auto c = GetColor(piece);
+
+					if (IsMajor[piece])
+						if (!GetBit(majorBitBoard[c], i))
+							return false;
+					else if (IsMinor[piece])
+						if (!GetBit(minorBitBoard[c], i))
+							return false;
+					else if (!GetBit(pawnBitBoard[c], i))
+						return false;
+				}
+			}
+		}
+
+		if (pieceCount != 32)
+			return false;
+
+		for (size_t piece = 1; piece < 13; piece++)
+		{
+			if (pieces[piece].count != (uint32_t)piecesCheck[piece].size())
+				return false;
+
+			for (size_t i = 0; i < piecesCheck[piece].size(); i++)
+			{
+				bool found = false;
+
+				for (size_t j = 0; j < piecesCheck[piece].size(); j++)
+				{
+					if (pieces[piece].positions[i] == piecesCheck[piece][j])
+					{
+						found = true;
+						break;
+					}
+				}
+
+				if (!found)
+					return false;
+			}
+		}
+
+		return true;
 	}
 
 	bool Board::AddPiece(int32_t index, PieceType piece)
@@ -207,17 +283,11 @@ namespace chs
 		{
 			auto c = GetColor(piece);
 			if (IsMajor[piece])
-			{
 				SetBit(majorBitBoard[c], 1, index);
-			}
 			else if (IsMinor[piece])
-			{
 				SetBit(minorBitBoard[c], 1, index);
-			}
 			else
-			{
 				SetBit(pawnBitBoard[c], 1, index);
-			}
 		}
 		return true;
 	}
@@ -491,11 +561,15 @@ namespace chs
 
 	PieceType Board::GetTile(const glm::vec2& tile)
 	{
+		if (!InsideBoard(tile))
+			return 0;
 		return GetTile(GetIndexFromPosition(tile));
 	}
 
 	bool Board::IsPiece(const glm::vec2& tile)
 	{
+		if (!InsideBoard(tile))
+			return false;
 		return IsPiece(GetIndexFromPosition(tile));
 	}
 

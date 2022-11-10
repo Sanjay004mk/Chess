@@ -10,7 +10,9 @@ namespace chs
 
 	void TileManager::DrawTiles()
 	{
-		et::Quad q;
+		static et::Quad q;
+		static const glm::vec3 lightTile = glm::vec3(0.77f, 0.82f, 0.69f);
+		static const glm::vec3 darkTile = glm::vec3(0.22f, 0.35f, 0.24f);
 
 		// board
 		{
@@ -19,7 +21,7 @@ namespace chs
 				for (float y = -3.5f; y < 4.f; y++)
 				{
 					q.position = { x, y };
-					q.color = (int32_t)(x + y) % 2 == 0 ? glm::vec3(0.77, 0.82, 0.69) : glm::vec3(0.19, 0.35, 0.24);
+					q.color = (int32_t)(x + y) % 2 == 0 ? lightTile : darkTile;
 
 					auto tilePos = q.position + glm::vec2(4.5f);
 					if (tilePos == hoveredPiecePos)
@@ -31,6 +33,21 @@ namespace chs
 				}
 			}
 		}
+
+		// highlight moveTiles
+		{
+			q.size = glm::vec2(.7f);
+			for (auto& [tile, move] : moveTiles)
+			{
+				q.position = tile - glm::vec2(4.5f);
+				q.color = (int32_t)(tile.x + tile.y) % 2 == 0 ? lightTile : darkTile;
+				q.color -= glm::vec3(.2f);
+
+				et::Renderer::DrawQuad(q);
+			}
+			q.size = glm::vec2(1.f);
+		}
+
 		// pieces
 		if (board)
 		{
@@ -83,17 +100,6 @@ namespace chs
 				}
 			}
 			q.size = glm::vec2(1.f);
-		}
-
-		// highlight moveTiles
-		{
-			q.color = glm::vec3(1.f);
-			for (auto& [tile, move] : moveTiles)
-			{
-				q.position = tile - glm::vec2(4.5f);
-
-				et::Renderer::DrawQuad(q, MOVE_TILE_TEXTURE_INDEX);
-			}
 		}
 	}
 
