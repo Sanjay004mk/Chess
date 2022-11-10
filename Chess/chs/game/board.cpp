@@ -459,8 +459,6 @@ namespace chs
 
 		std::cout << *this << std::endl;
 
-		playedMoves.push_back(move);
-
 		return true;
 	}
 
@@ -469,11 +467,10 @@ namespace chs
 		if (playedMoves.empty())
 			return false;
 
-		if (Revert(playedMoves.back()))
-			playedMoves.pop_back();
-		else
+		if (!Revert(playedMoves.back()))
 			return false;
-		ET_LOG_INFO("{}", playedMoves.size());
+
+		playedMoves.pop_back();
 		return true;
 	}
 
