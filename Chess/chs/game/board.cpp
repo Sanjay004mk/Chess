@@ -231,7 +231,9 @@ namespace chs
 			}
 			if (empty)
 				fen += std::to_string(empty);
-			fen += '/';
+
+			if (i != 0)
+				fen += '/';
 		}
 		fen += ' ';
 		fen += turn ? 'w' : 'b';
