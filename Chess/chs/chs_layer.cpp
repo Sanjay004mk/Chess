@@ -248,8 +248,13 @@ namespace chs
 			{
 				bool control = et::Input::IsKeyDown(et::Key::LeftControl) || et::Input::IsKeyDown(et::Key::RightControl);
 				if (control)
+				{
 					if (e.GetKeyCode() == et::Key::Z)
 						this->board->Undo();
+					else if (e.GetKeyCode() == et::Key::C)
+						ImGui::SetClipboardText(this->board->GetFEN().c_str());
+				}
+				
 				return false;
 			});
 	}

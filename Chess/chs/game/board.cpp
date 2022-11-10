@@ -209,6 +209,62 @@ namespace chs
 
 	}
 
+	std::string Board::GetFEN() const
+	{
+		std::string fen{};
+
+		for (int32_t i = 7; i > -1; i--)
+		{
+			int32_t empty = 0;
+			for (int32_t j = 0; j < 8; j++)
+			{
+				auto piece = tiles[(i * 8) + j];
+				if (piece)
+				{
+					if (empty)
+						fen += std::to_string(empty);
+					fen += PieceToChar[piece];
+					empty = 0;
+				}
+				else
+					empty++;
+			}
+			if (empty)
+				fen += std::to_string(empty);
+			fen += '/';
+		}
+		fen += ' ';
+		fen += turn ? 'w' : 'b';
+		fen += ' ';
+
+		if (castlePermission & CastleWhiteKing)
+			fen += 'K';
+		if (castlePermission & CastleWhiteQueen)
+			fen += 'Q';
+		if (castlePermission & CastleBlackKing)
+			fen += 'k';
+		if (castlePermission & CastleBlackQueen)
+			fen += 'q';
+
+		if (fen.back() != ' ')
+			fen += ' ';
+		else
+			fen += "- ";
+
+		if (enPassant > -1 && enPassant < 64)
+			fen += IndexToStr(enPassant);
+		else
+			fen += '-';
+
+		fen += ' ';
+		fen += std::to_string(fiftyMove);
+		
+		fen += ' ';
+		fen += std::to_string(fullMoves);
+
+		return fen;
+	}
+
 	bool Board::Valid() const
 	{
 		if (pieces[BlackKing].count != 1 || pieces[WhiteKing].count != 1)
@@ -437,10 +493,10 @@ namespace chs
 
 		fiftyMove++;
 
+		turn = (~turn & 1u);
+
 		if (turn)
 			fullMoves++;
-
-		turn = (~turn & 1u);
 
 		if (move.Capture())
 		{

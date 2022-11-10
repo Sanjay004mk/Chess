@@ -248,6 +248,8 @@ namespace chs
 
 		size_t hash() const;
 
+		std::string GetFEN() const;
+
 		// tmp
 		void StressTest() const;
 
