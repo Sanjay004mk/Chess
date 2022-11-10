@@ -49,7 +49,7 @@ namespace chs
 	struct Move
 	{
 		Move() {}
-		Move(int32_t from, int32_t to, int32_t capture, int32_t pawnStart = 0, int32_t enPassant = 0, int32_t castle = 0, PieceType promote = 0)
+		Move(int32_t from, int32_t to, int32_t capture, PieceType capturePiece, int32_t castleperm, int32_t enpTile,  int32_t fifty, int32_t full, int32_t pawnStart = 0, int32_t enPassant = 0, int32_t castle = 0, PieceType promote = 0)
 		{
 			From(from);
 			To(to);
@@ -57,16 +57,18 @@ namespace chs
 			PawnStart(pawnStart);
 			Castle(castle);
 			Capture(capture);
+			CapturedType(capturePiece);
+			CastlePerm(castleperm);
+			EnPassantTile(enpTile);
+			Fifty(fifty);
+			Full(full);
 			PromotedTo(promote);
 		}
 
 		template <typename integer>
 		Move(integer data) : data(static_cast<uint32_t>(data)) {}
 
-		bool Valid() const
-		{
-			return true;
-		}
+		bool Valid() const;
 
 		int32_t From() const { return (int32_t)(data & 0x0000003fu); }
 		void From(int32_t index)
@@ -124,12 +126,62 @@ namespace chs
 			data |= ((uint32_t)type << 16);
 		}
 
-		PieceType Type() const { return (PieceType)((data & 0x00f00000) >> 20); }
-		void Type(PieceType type)
+		PieceType CapturedType() const { return (PieceType)((data & 0x00f00000) >> 20); }
+		void CapturedType(PieceType type)
 		{
 			// clear type
 			data = (data & ~0x00f00000u);
 			data |= ((uint32_t)type << 20);
+		}
+
+		int32_t Fifty() const { return (int32_t)(data & 0xff000000u); }
+		void Fifty(int32_t fifty)
+		{
+			// clear fifty
+			data = (data & ~0xff000000u);
+			data |= ((uint32_t)fifty << 24);
+		}
+
+		int32_t EnPassantTile() const
+		{
+			if (data2 & 0x000000010u)
+				return 64;
+
+			int32_t offs = (int32_t)(data2 & 0x00000007u);
+			// isWhite
+			if (data2 & 0x00000008u)
+				return 24 + offs;
+			else
+				return 40 + offs;
+		}
+		void EnPassantTile(int32_t index)
+		{
+			if (index > 63 || index < 0)
+			{
+				data2 |= 0x000000010u;
+				return;
+			}
+			// isWhite
+			if (index < 32)
+				data2 |= 0x00000008u;
+
+			data2 |= (uint32_t)(index % 8);
+		}
+
+		int32_t CastlePerm() const { return (int32_t)(data2 & 0x000001e0u); }
+		void CastlePerm(int32_t perm)
+		{
+			// clear perm
+			data2 = (data2 & ~0x000001e0u);
+			data2 |= ((uint32_t)perm << 5);
+		}
+
+		int32_t Full() const { return (int32_t)(data2 & 0x01fffe00u); }
+		void Full(int32_t full)
+		{
+			// clear perm
+			data2 = (data2 & ~0x01fffe00u);
+			data2 |= ((uint32_t)full << 9);
 		}
 
 		uint32_t data = 0;
@@ -137,26 +189,22 @@ namespace chs
 		/*
 		*    
 		*   0000  0000    0000  0000    0000  0000    0000  0000
-		*   ----  ----    ----  ----    ----  ----    --11  1111  -> 'from'        Mask: 0x0000003f    Values: ( 0 - 63 ) 
-		*   ----  ----    ----  ----    ----  1111    11--  ----  -> 'to'	       Mask: 0x00000fc0    Values: ( 0 - 63 )
-		*   ----  ----    ----  ----    ---1  ----    ----  ----  -> 'en passsant' Mask: 0x00001000    Values: 0 / 1
-		*   ----  ----    ----  ----    --1-  ----    ----  ----  -> 'pawn start'  Mask: 0x00002000    Values: 0 / 1  ( set only on 2 long moves )
-		*   ----  ----    ----  ----    -1--  ----    ----  ----  -> 'castle'      Mask: 0x00004000    Vaules: 0 / 1
-		*   ----  ----    ----  ----    1---  ----    ----  ----  -> 'capture'     Mask: 0x00008000    Vaules: 0 / 1
-		*   ----  ----    ----  1111    ----  ----    ----  ----  -> 'promote'     Mask: 0x000f0000    Vaules: ( 0 - 12 )
-		*   ----  ----    1111  ----    ----  ----    ----  ----  -> 'type'        Mask: 0x00f00000    Vaules: ( 1 - 12 )  [[maybe unused]]
+		*   ----  ----    ----  ----    ----  ----    --11  1111  -> 'from'             Mask: 0x0000003f    Values: ( 0 - 63 ) 
+		*   ----  ----    ----  ----    ----  1111    11--  ----  -> 'to'	            Mask: 0x00000fc0    Values: ( 0 - 63 )
+		*   ----  ----    ----  ----    ---1  ----    ----  ----  -> 'en passsant'      Mask: 0x00001000    Values: 0 / 1
+		*   ----  ----    ----  ----    --1-  ----    ----  ----  -> 'pawn start'       Mask: 0x00002000    Values: 0 / 1  ( set only on 2 long moves )
+		*   ----  ----    ----  ----    -1--  ----    ----  ----  -> 'castle'           Mask: 0x00004000    Vaules: 0 / 1
+		*   ----  ----    ----  ----    1---  ----    ----  ----  -> 'capture'          Mask: 0x00008000    Vaules: 0 / 1
+		*   ----  ----    ----  1111    ----  ----    ----  ----  -> 'promote'          Mask: 0x000f0000    Vaules: ( 0 - 12 )
+		*   ----  ----    1111  ----    ----  ----    ----  ----  -> 'captured type'    Mask: 0x00f00000    Vaules: ( 0 - 12 )  [used by undo]
+		*   1111  1111    ----  ----    ----  ----    ----  ----  -> 'fifty move'       Mask: 0xff000000    Vaules: ( 0 - 100 )  [used by undo]
 		* 
 		*   next 32 bits   
 		* 
 		*   0000  0000    0000  0000    0000  0000    0000  0000
-		*   ----  ----    ----  ----    ----  ----    --11  1111  -> 'from'        Mask: 0x0000003f    Values: ( 0 - 63 ) 
-		*   ----  ----    ----  ----    ----  1111    11--  ----  -> 'to'	       Mask: 0x00000fc0    Values: ( 0 - 63 )
-		*   ----  ----    ----  ----    ---1  ----    ----  ----  -> 'en passsant' Mask: 0x00001000    Values: 0 / 1
-		*   ----  ----    ----  ----    --1-  ----    ----  ----  -> 'pawn start'  Mask: 0x00002000    Values: 0 / 1  ( set only on 2 long moves )
-		*   ----  ----    ----  ----    -1--  ----    ----  ----  -> 'castle'      Mask: 0x00004000    Vaules: 0 / 1
-		*   ----  ----    ----  ----    1---  ----    ----  ----  -> 'capture'     Mask: 0x00008000    Vaules: 0 / 1
-		*   ----  ----    ----  1111    ----  ----    ----  ----  -> 'promote'     Mask: 0x000f0000    Vaules: ( 0 - 12 )
-		*   ----  ----    1111  ----    ----  ----    ----  ----  -> 'type'        Mask: 0x00f00000    Vaules: ( 1 - 12 )  [[maybe unused]]
+		*   ----  ----    ----  ----    ----  ----    ---1  1111  -> 'en passant tile'  Mask: 0x0000001f    Values: ( 0 - 15 / 16 ) 
+		*   ----  ----    ----  ----    ----  ---1    111-  ----  -> 'castle perm'      Mask: 0x000001e0    Values: ( 0 - 15 )
+		*   ----  ---1    1111  1111    1111  111-    ----  ----  -> 'full moves'       Mask: 0x01fffe00    Values: ( 1 - 65535 )
 		*/
 
 		template <typename ostream>
@@ -185,7 +233,9 @@ namespace chs
 
 		std::unordered_map<glm::vec2, Move> GetMoveTiles(const glm::vec2& position);
 		bool MovePiece(Move move);
-		bool Valid();
+		bool Revert(Move move);
+		bool Undo();
+		bool Valid() const;
 
 		PieceType GetTile(const glm::vec2& tile);
 		PieceType GetTile(int32_t index);
@@ -210,6 +260,7 @@ namespace chs
 
 		PieceType tiles[64] = { 0 };		
 		std::vector<std::pair<int32_t, PieceType>> capturedTiles;
+		std::vector<Move> playedMoves;
 		// to be able to index from PieceType enum ( 0 = empty, ..., 12 = white king )
 		PieceList pieces[13] = {};
 
@@ -222,9 +273,9 @@ namespace chs
 		size_t hashKey = 0;
 
 		// bit boards 
-		uint64_t pawnBitBoard[2];
-		uint64_t majorBitBoard[2];
-		uint64_t minorBitBoard[2];
+		uint64_t pawnBitBoard[2] = { 0 };
+		uint64_t majorBitBoard[2] = { 0 };
+		uint64_t minorBitBoard[2] = { 0 };
 
 		template <typename ostream>
 		friend ostream& operator<<(ostream& stream, const Board& board);
