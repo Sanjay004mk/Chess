@@ -101,8 +101,8 @@ namespace chs
 		Resize(800, 800);
 
 		// starting positions 
-		board = et::CreateRef<Board>("rnbqkb1r/pp2pppp/7n/1Ppp4/4P3/8/P1PP1PPP/RNBQKBNR w KQkq c6 0 4");
-		//board = et::CreateRef<Board>("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+		//board = et::CreateRef<Board>("rnbqkb1r/pp2pppp/7n/1Ppp4/4P3/8/P1PP1PPP/RNBQKBNR w KQkq c6 0 4");
+		board = et::CreateRef<Board>("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 		tileManager.board = board.get();
 		std::cout << *board << std::endl;
 	}
