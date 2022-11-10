@@ -248,6 +248,9 @@ namespace chs
 
 		size_t hash() const;
 
+		// tmp
+		void StressTest() const;
+
 	private:
 		bool AddPiece(int32_t index, PieceType piece);
 		bool RemovePiece(int32_t index, PieceType* piece = nullptr);

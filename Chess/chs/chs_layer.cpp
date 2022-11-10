@@ -149,6 +149,13 @@ namespace chs
 		ImGuiViewport* viewport = ImGui::GetMainViewport();
 		ImVec2 viewport_size = viewport->Size;
 		ImVec2 viewport_pos = viewport->Pos;
+
+#if defined(CHS_DEBUG)
+		ImGui::SetNextWindowPos(viewport_pos);
+		ImGui::Begin("fps", nullptr, window_flags);
+		ImGui::Text("%.4f", ImGui::GetIO().Framerate);
+		ImGui::End();
+#endif
 		{
 
 			{

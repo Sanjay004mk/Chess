@@ -118,7 +118,6 @@ namespace chs
 		return true;
 	}
 
-
 	Board::Board(std::string_view fen_string)
 	{
 		LoadFromFen(fen_string);
@@ -268,6 +267,29 @@ namespace chs
 		}
 
 		return true;
+	}
+
+	void Board::StressTest() const
+	{
+		constexpr int32_t depth = 20;
+		auto copy = *this;
+
+		for (int32_t d = 0; d < depth; d++)
+		{
+			Valid();
+			hash();
+			for (int32_t i = 0; i < 64; i++)
+				if (tiles[i])
+				{
+					auto moves = GetMoves[tiles[i]](this, i);
+					for (auto move : moves)
+					{
+						copy.MovePiece(move);
+						copy.Revert(move);
+					}
+
+				}
+		}
 	}
 
 	bool Board::AddPiece(int32_t index, PieceType piece)
@@ -496,8 +518,8 @@ namespace chs
 
 		hashKey = hash();
 
-		std::cout << move << std::endl;
-		std::cout << *this << std::endl;
+		/*std::cout << move << std::endl;
+		std::cout << *this << std::endl;*/
 
 		playedMoves.push_back(move);
 
@@ -542,7 +564,7 @@ namespace chs
 
 		hashKey = hash();
 
-		std::cout << *this << std::endl;
+		/*std::cout << *this << std::endl;*/
 
 		return true;
 	}
