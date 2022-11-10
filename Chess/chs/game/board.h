@@ -49,7 +49,7 @@ namespace chs
 	struct Move
 	{
 		Move() {}
-		Move(int32_t from, int32_t to, int32_t capture, PieceType capturePiece, int32_t castleperm, int32_t enpTile,  int32_t fifty, int32_t full, int32_t pawnStart = 0, int32_t enPassant = 0, int32_t castle = 0, PieceType promote = 0)
+		Move(int32_t from, int32_t to, int32_t capture, int32_t pawnStart = 0, int32_t enPassant = 0, int32_t castle = 0, PieceType promote = 0)
 		{
 			From(from);
 			To(to);
@@ -57,11 +57,6 @@ namespace chs
 			PawnStart(pawnStart);
 			Castle(castle);
 			Capture(capture);
-			CapturedType(capturePiece);
-			CastlePerm(castleperm);
-			EnPassantTile(enpTile);
-			Fifty(fifty);
-			Full(full);
 			PromotedTo(promote);
 		}
 
@@ -134,7 +129,7 @@ namespace chs
 			data |= ((uint32_t)type << 20);
 		}
 
-		int32_t Fifty() const { return (int32_t)(data & 0xff000000u); }
+		int32_t Fifty() const { return (int32_t)((data & 0xff000000u) >> 24); }
 		void Fifty(int32_t fifty)
 		{
 			// clear fifty
@@ -150,7 +145,7 @@ namespace chs
 			int32_t offs = (int32_t)(data2 & 0x00000007u);
 			// isWhite
 			if (data2 & 0x00000008u)
-				return 24 + offs;
+				return 16 + offs;
 			else
 				return 40 + offs;
 		}
@@ -168,7 +163,7 @@ namespace chs
 			data2 |= (uint32_t)(index % 8);
 		}
 
-		int32_t CastlePerm() const { return (int32_t)(data2 & 0x000001e0u); }
+		int32_t CastlePerm() const { return (int32_t)((data2 & 0x000001e0u) >> 5); }
 		void CastlePerm(int32_t perm)
 		{
 			// clear perm
@@ -176,7 +171,7 @@ namespace chs
 			data2 |= ((uint32_t)perm << 5);
 		}
 
-		int32_t Full() const { return (int32_t)(data2 & 0x01fffe00u); }
+		int32_t Full() const { return (int32_t)((data2 & 0x01fffe00u) >> 9); }
 		void Full(int32_t full)
 		{
 			// clear perm
@@ -323,8 +318,7 @@ namespace chs
 	ostream& operator<<(ostream& stream, const Move& move)
 	{
 		stream << "Move: [ " << "from: " << IndexToStr(move.From()) << ", to: " << IndexToStr(move.To()) << ", en passant: " << move.EnPassant();
-		stream << ", pawn start: " << move.PawnStart() << ", castle: " << move.Castle() << ", capture: " << move.Capture();
-		stream << ", promoted to: " << PieceToChar[move.PromotedTo()] << ", type: " << PieceToChar[move.Type()] << " ]";
+		stream << ", castle: " << move.Castle() << ", capture: " << move.Capture() << " ]";
 		return stream;
  	}
 

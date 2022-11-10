@@ -161,6 +161,15 @@ namespace chs
 					this->tileManager.OnMouseRelease(et::Input::GetMousePosition());
 				return false;
 			});
+
+		dispatcher.Dispatch<et::KeyPressedEvent>([this](et::KeyPressedEvent& e)
+			{
+				bool control = et::Input::IsKeyDown(et::Key::LeftControl) || et::Input::IsKeyDown(et::Key::RightControl);
+				if (control)
+					if (e.GetKeyCode() == et::Key::Z)
+						this->board->Undo();
+				return false;
+			});
 	}
 
 	void ChessLayer::Resize(uint32_t newWidth, uint32_t newHeight)

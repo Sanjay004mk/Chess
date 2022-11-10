@@ -1,3 +1,4 @@
+#include <iostream>
 #include "Entropy/EntropyUtils.h"
 
 #include "board.h"
@@ -337,7 +338,16 @@ namespace chs
 		if (!move.Valid())
 			return false;
 
+		move.Fifty(fiftyMove);
+		move.Full(fullMoves);
+		move.EnPassantTile(enPassant);
+		move.CastlePerm(castlePermission);
+
 		fiftyMove++;
+
+		if (turn)
+			fullMoves++;
+
 		turn = (~turn & 1u);
 
 		if (move.Capture())
@@ -353,6 +363,7 @@ namespace chs
 				ClearCastle(castlePermission, GetColor(rem_piece), cap_tile % 8 == 0);
 
 			capturedTiles.push_back({ cap_tile, rem_piece });
+			move.CapturedType(rem_piece);
 		}
 		else if (move.Castle())
 		{
@@ -373,7 +384,6 @@ namespace chs
 			ClearCastle(castlePermission, GetColor(tiles[move.From()]), true);
 			ClearCastle(castlePermission, GetColor(tiles[move.From()]), false);
 		}
-
 
 		if (move.PawnStart())
 			enPassant = PieceToEnPassant(move.To());
@@ -399,17 +409,72 @@ namespace chs
 				ET_LOG_INFO("CHECKMATE");
 		}
 
+		hashKey = hash();
+
+		std::cout << move << std::endl;
+		std::cout << *this << std::endl;
+
+		playedMoves.push_back(move);
+
 		return true;
 	}
 
 	bool Board::Revert(Move move)
 	{
+		if (!move.Valid())
+			return false;
 
+		fiftyMove = move.Fifty();
+		fullMoves = move.Full();
+		enPassant = move.EnPassantTile();
+		castlePermission = move.CastlePerm();
+		turn = (~turn & 1u);
+
+		if (!ShiftPiece(move.To(), move.From()))
+			return false;
+
+		if (move.Capture())
+		{
+			auto cap_tile = move.EnPassant() ? EnPassantToPiece(enPassant) : move.To();
+			PieceType rem_piece = move.CapturedType();
+			if (!AddPiece(cap_tile, rem_piece))
+				return false;
+
+			std::pair<int32_t, PieceType> t = { cap_tile, rem_piece };
+			auto it = std::find(capturedTiles.begin(), capturedTiles.end(), t);
+			ET_DEBUG_ASSERT(it != capturedTiles.end());
+			capturedTiles.erase(it);
+		}
+		else if (move.Castle())
+		{
+			bool queenSide = ((move.To() % 8) < 4);
+			int32_t rook_from = move.To() + (queenSide ? -2 : 1);
+			int32_t rook_to = move.To() + (queenSide ? 1 : -1);
+			if (!ShiftPiece(rook_to, rook_from))
+				return false;
+
+		}
+
+		hashKey = hash();
+
+		std::cout << *this << std::endl;
+
+		playedMoves.push_back(move);
+
+		return true;
 	}
 
 	bool Board::Undo()
 	{
+		if (playedMoves.empty())
+			return false;
 
+		if (Revert(playedMoves.back()))
+			playedMoves.pop_back();
+		else
+			return false;
+		ET_LOG_INFO("{}", playedMoves.size());
+		return true;
 	}
 
 	PieceType Board::GetTile(const glm::vec2& tile)
@@ -509,14 +574,14 @@ namespace chs
 			{
 				if (prom)
 				{
-					moves.push_back(Move(index, possible[0], 0, 0, board->castlePermission, board->enPassant, board->fiftyMove, board->fullMoves, 0, 0, 0, BlackRook + isWhite));
-					moves.push_back(Move(index, possible[0], 0, 0, board->castlePermission, board->enPassant, board->fiftyMove, board->fullMoves, 0, 0, 0, BlackKnight + isWhite));
-					moves.push_back(Move(index, possible[0], 0, 0, board->castlePermission, board->enPassant, board->fiftyMove, board->fullMoves, 0, 0, 0, BlackBishop + isWhite));
-					moves.push_back(Move(index, possible[0], 0, 0, board->castlePermission, board->enPassant, board->fiftyMove, board->fullMoves, 0, 0, 0, BlackQueen + isWhite));
-					moves.push_back(Move(index, possible[0], 0, 0, board->castlePermission, board->enPassant, board->fiftyMove, board->fullMoves, 0, 0, 0, 0));
+					moves.push_back(Move(index, possible[0], 0, 0, 0, 0, BlackRook + isWhite));
+					moves.push_back(Move(index, possible[0], 0, 0, 0, 0, BlackKnight + isWhite));
+					moves.push_back(Move(index, possible[0], 0, 0, 0, 0, BlackBishop + isWhite));
+					moves.push_back(Move(index, possible[0], 0, 0, 0, 0, BlackQueen + isWhite));
+					moves.push_back(Move(index, possible[0], 0, 0, 0, 0, 0));
 				}
 				else
-					moves.push_back(Move(index, possible[0], 0, 0, board->castlePermission, board->enPassant, board->fiftyMove, board->fullMoves, 0, 0, 0, 0));
+					moves.push_back(Move(index, possible[0], 0, 0, 0, 0, 0));
 			}
 		}
 		// double forward
@@ -529,7 +594,7 @@ namespace chs
 				valid = false;
 
 			if (valid)
-				moves.push_back(Move(index, possible[1], 0, 0, board->castlePermission, board->enPassant, board->fiftyMove, board->fullMoves, 1, 0, 0, 0));
+				moves.push_back(Move(index, possible[1], 0, 1, 0, 0, 0));
 		}
 
 		// side capture / en passant capture
@@ -567,14 +632,14 @@ namespace chs
 				{
 					if (prom)
 					{
-						moves.push_back(Move(index, index__, capture, cap_piece, board->castlePermission, board->enPassant, board->fiftyMove, board->fullMoves, 0, 0, 0, BlackRook + isWhite));
-						moves.push_back(Move(index, index__, capture, cap_piece, board->castlePermission, board->enPassant, board->fiftyMove, board->fullMoves, 0, 0, 0, BlackKnight + isWhite));
-						moves.push_back(Move(index, index__, capture, cap_piece, board->castlePermission, board->enPassant, board->fiftyMove, board->fullMoves, 0, 0, 0, BlackBishop + isWhite));
-						moves.push_back(Move(index, index__, capture, cap_piece, board->castlePermission, board->enPassant, board->fiftyMove, board->fullMoves, 0, 0, 0, BlackQueen + isWhite));
-						moves.push_back(Move(index, index__, capture, cap_piece, board->castlePermission, board->enPassant, board->fiftyMove, board->fullMoves, 0, 0, 0, 0));
+						moves.push_back(Move(index, index__, capture, 0, 0, 0, BlackRook + isWhite));
+						moves.push_back(Move(index, index__, capture, 0, 0, 0, BlackKnight + isWhite));
+						moves.push_back(Move(index, index__, capture, 0, 0, 0, BlackBishop + isWhite));
+						moves.push_back(Move(index, index__, capture, 0, 0, 0, BlackQueen + isWhite));
+						moves.push_back(Move(index, index__, capture, 0, 0, 0, 0));
 					}
 					else
-						moves.push_back(Move(index, index__, capture, cap_piece, board->castlePermission, board->enPassant, board->fiftyMove, board->fullMoves, 0, enPassant, 0, 0));
+						moves.push_back(Move(index, index__, capture, 0, enPassant, 0, 0));
 				}
 
 			}
@@ -598,15 +663,13 @@ namespace chs
 			position.position += direction;
 
 			int32_t capture = 0;
-			PieceType cap_piece = 0;
 			if (board->tiles[index])
 			{
 				capture = 1;
 				if (!(IsWhite(board->tiles[index]) ^ isWhite))
 					break;
-				cap_piece = board->tiles[index];
 			}
-			moves.push_back(Move(start_index, index, capture, cap_piece, board->castlePermission, board->enPassant, board->fiftyMove, board->fullMoves));
+			moves.push_back(Move(start_index, index, capture));
 
 			if (capture)
 				break;
@@ -645,15 +708,13 @@ namespace chs
 			if (position.Move(offs.x, offs.y, end_index))
 			{
 				int32_t capture = 0;
-				PieceType cap_piece = 0;
 				if (board->tiles[end_index])
 				{
 					capture = 1;
 					if (!(IsWhite(board->tiles[end_index]) ^ isWhite))
 						return;
-					cap_piece = board->tiles[end_index];
 				}
-				moves.push_back(Move(index, end_index, capture, cap_piece, board->castlePermission, board->enPassant, board->fiftyMove, board->fullMoves));
+				moves.push_back(Move(index, end_index, capture));
 			}
 		};
 
@@ -710,15 +771,13 @@ namespace chs
 			if (position.Move(offs.x, offs.y, end_index))
 			{
 				int32_t capture = 0;
-				PieceType cap_piece = 0;
 				if (board->tiles[end_index])
 				{
 					capture = 1;
 					if (!(IsWhite(board->tiles[end_index]) ^ isWhite))
 						return;
-					cap_piece = board->tiles[end_index];
 				}
-				moves.push_back(Move(index, end_index, capture, cap_piece, board->castlePermission, board->enPassant, board->fiftyMove, board->fullMoves));
+				moves.push_back(Move(index, end_index, capture));
 			}
 		};
 
@@ -756,7 +815,7 @@ namespace chs
 					}
 
 
-					moves.push_back(Move(index, king, 0, 0, board->castlePermission, board->enPassant, board->fiftyMove, board->fullMoves, 0, 0, 1, 0));
+					moves.push_back(Move(index, king, 0, 0, 0, 1, 0));
 				}
 			};
 
