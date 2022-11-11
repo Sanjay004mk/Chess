@@ -483,6 +483,23 @@ namespace chs
 			}
 		}
 
+		// check if move results in current side ending up in check
+		auto copy = *this;
+		std::vector<glm::vec2> rem_tiles;
+		for (auto [pos, move] : tiles)
+		{
+			copy.MovePiece(move);
+
+			// move results in player checkmating self
+			if (copy.IsAttacked(copy.pieces[BlackKing + turn].positions[0], turn ^ 1))
+				rem_tiles.push_back(pos);
+
+			copy.Revert(move);
+		}
+		// remove all moves that result in player checkmating self
+		for (auto& pos : rem_tiles)
+			tiles.erase(pos);
+
 		return tiles;
 	}
 
@@ -612,6 +629,10 @@ namespace chs
 		hashKey = hash();
 
 		ET_DEBUG_ASSERT(Valid());
+
+		// reset checkmate
+		inCheck = false;
+		checkValidMoves.clear();
 
 		return true;
 	}
