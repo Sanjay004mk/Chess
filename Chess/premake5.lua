@@ -40,7 +40,7 @@ project "Chess"
         defines 
         {
             "CHS_RELEASE",
-            "ET_DIST",
+            "ET_RELEASE",
         }
         runtime "Release"
         optimize "on"

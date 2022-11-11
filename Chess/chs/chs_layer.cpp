@@ -114,7 +114,6 @@ namespace chs
 		board = et::CreateRef<Board>("rnbqkbnr/pppp1P1p/8/8/6p1/8/PPP1PPPP/RNBQKBNR w KQkq - 0 5");
 		//board = et::CreateRef<Board>("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 		tileManager.board = board.get();
-		std::cout << *board << std::endl;
 	}
 
 	void ChessLayer::OnDetach()
