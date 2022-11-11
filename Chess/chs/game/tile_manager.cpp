@@ -141,16 +141,27 @@ namespace chs
 			shouldMove = true;
 	}
 
+	extern bool askPromotion = false;
+
 	void TileManager::OnMouseRelease(const glm::vec2& mousePos)
 	{
 		auto pos = ScreenPosToTilePos(mousePos);
-		if (pos != clickedPos || shouldMove)
+		if ((pos != clickedPos || shouldMove) && !askPromotion)
 		{
 			if (moveTiles.count(pos) != 0)
-				board->MovePiece(moveTiles.at(pos));
+			{
+				board->MakeMove(moveTiles.at(pos), askPromotion);
+			}
 			moveTiles.clear();
 		}
+
 		dragPiece = 0;
+	}
+
+	bool TileManager::Promote(PieceType piece) 
+	{
+		askPromotion = false;
+		return board->Promote(piece);
 	}
 
 	glm::vec2 TileManager::ScreenPosToTilePos(const glm::vec2& screenPos)

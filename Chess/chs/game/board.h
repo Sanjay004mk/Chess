@@ -227,8 +227,8 @@ namespace chs
 		~Board() {}
 
 		std::unordered_map<glm::vec2, Move> GetMoveTiles(const glm::vec2& position);
-		bool MovePiece(Move move);
-		bool Revert(Move move);
+		bool MakeMove(Move move, bool& shouldPromote);
+		bool Promote(PieceType piece);
 		bool Undo();
 		bool Valid() const;
 
@@ -245,8 +245,10 @@ namespace chs
 		const auto& CapturedPieces() const { return capturedTiles; }
 		auto Full() const { return fullMoves; }
 		auto Fifty() const { return fiftyMove; }
+		auto GetTurn() const { return turn; }
 
 		size_t hash() const;
+		size_t GetHash() const { return hashKey; }
 
 		std::string GetFEN() const;
 
@@ -257,6 +259,8 @@ namespace chs
 		bool AddPiece(int32_t index, PieceType piece);
 		bool RemovePiece(int32_t index, PieceType* piece = nullptr);
 		bool ShiftPiece(int32_t from, int32_t to, PieceType* piece = nullptr);
+		bool MovePiece(Move move);
+		bool Revert(Move move);
 		void LoadFromFen(std::string_view fen_string);
 		std::vector<Move> GetMoveTiles(int32_t position);
 
@@ -266,6 +270,7 @@ namespace chs
 		// to be able to index from PieceType enum ( 0 = empty, ..., 12 = white king )
 		PieceList pieces[13] = {};
 
+		Color player = White;
 		Color turn = 0;
 		int32_t enPassant = 64;
 		int32_t castlePermission = 0;

@@ -10,6 +10,14 @@
 
 namespace chs
 {
+	static ImVec2 GetImVec2(const glm::vec2& vector)
+	{
+		ET_STATIC_ASSERT(sizeof(glm::vec2) == sizeof(ImVec2));
+		ImVec2 v;
+		memcpy_s(&v, sizeof(v), &vector, sizeof(vector));
+		return v;
+	}
+
 	void ChessLayer::OnAttach()
 	{
 		// renderpass
@@ -103,8 +111,8 @@ namespace chs
 		Resize(800, 800);
 
 		// starting positions 
-		//board = et::CreateRef<Board>("rnbqkb1r/pp2pppp/7n/1Ppp4/4P3/8/P1PP1PPP/RNBQKBNR w KQkq c6 0 4");
-		board = et::CreateRef<Board>("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+		board = et::CreateRef<Board>("rnbqkbnr/pppp1P1p/8/8/6p1/8/PPP1PPPP/RNBQKBNR w KQkq - 0 5");
+		//board = et::CreateRef<Board>("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 		tileManager.board = board.get();
 		std::cout << *board << std::endl;
 	}
@@ -136,6 +144,8 @@ namespace chs
 		et::Renderer::Present(screen);
 	}
 
+	extern bool askPromotion;
+
 	void ChessLayer::OnImGuiRender()
 	{
 		ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoDecoration;
@@ -149,6 +159,28 @@ namespace chs
 		ImGuiViewport* viewport = ImGui::GetMainViewport();
 		ImVec2 viewport_size = viewport->Size;
 		ImVec2 viewport_pos = viewport->Pos;
+
+		if (askPromotion)
+		{
+			auto pos = tileManager.WorldPosToScreenPos(glm::vec2(-3.5f, 0.5f));
+			float width = tileManager.WorldToScreenUnit();
+			// the turn will have changed after board->MoveTile() so invert it
+			bool isWhite = !board->GetTurn();
+			PieceType piece = BlackRook + isWhite;
+			char id[2] = { 0 };
+			id[0] = 'a';
+			for (size_t i = 0; i < 4; i++)
+			{
+				ImGui::SetNextWindowPos(ImVec2(viewport_pos.x + pos.x, viewport_pos.y + pos.y));
+				ImGui::Begin(id, nullptr, window_flags);
+				if (ImGui::ImageButton(textures[piece]->GetImGuiTextureID(), ImVec2(width, width)))
+					tileManager.Promote(piece);
+				ImGui::End();
+				id[0]++;
+				piece += 2;
+				pos.x += 2.f * width;;
+			}
+		}
 
 #if defined(CHS_DEBUG)
 		ImGui::SetNextWindowPos(viewport_pos);
@@ -253,6 +285,8 @@ namespace chs
 						this->board->Undo();
 					else if (e.GetKeyCode() == et::Key::C)
 						ImGui::SetClipboardText(this->board->GetFEN().c_str());
+					else if (e.GetKeyCode() == et::Key::P)
+						ET_LOG_INFO("hash : 0x{:x}", this->board->GetHash());
 				}
 				
 				return false;

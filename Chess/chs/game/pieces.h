@@ -77,32 +77,32 @@ namespace chs
 
 	inline bool IsPawn(PieceType piece)
 	{
-		return piece > 0 && piece < 3;
+		return piece == BlackPawn || piece == WhitePawn;
 	}
 
 	inline bool IsRook(PieceType piece)
 	{
-		return piece > 2 && piece < 5;
+		return piece == BlackRook || piece == WhiteRook;
 	}
 
 	inline bool IsKnight(PieceType piece)
 	{
-		return piece > 4 && piece < 7;
+		return piece == BlackKnight || piece == WhiteKnight;
 	}
 
 	inline bool IsBishop(PieceType piece)
 	{
-		return piece > 6 && piece < 9;
+		return piece == BlackBishop || piece == WhiteBishop;
 	}
 
 	inline bool IsQueen(PieceType piece)
 	{
-		return piece > 8 && piece < 11;
+		return piece == BlackQueen || piece == WhiteQueen;
 	}
 
 	inline bool IsKing(PieceType piece)
 	{
-		return piece > 10 && piece < 13;
+		return piece == BlackKing || piece == WhiteKing;
 	}
 
 	inline bool SamePiece(PieceType left, PieceType right)

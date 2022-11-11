@@ -272,14 +272,12 @@ namespace chs
 		if (pieces[BlackKing].count != 1 || pieces[WhiteKing].count != 1)
 			return false;
 
-		size_t pieceCount = capturedTiles.size();
 		std::vector<int32_t> piecesCheck[13];
 		for (int32_t i = 0; i < 64; i++)
 		{
 			if (tiles[i])
 			{
 				auto piece = tiles[i];
-				pieceCount++;
 				piecesCheck[piece].push_back(i);
 
 				if (!IsKing(piece))
@@ -297,9 +295,6 @@ namespace chs
 				}
 			}
 		}
-
-		if (pieceCount != 32)
-			return false;
 
 		for (size_t piece = 1; piece < 13; piece++)
 		{
@@ -471,8 +466,9 @@ namespace chs
 		std::unordered_map<glm::vec2, Move> tiles;
 		for (auto& move : moves)
 		{
-			if (!move.PromotedTo())
-				tiles[(GetPositionFromIndex(move.To()))] = move;
+			// if (!move.PromotedTo())
+			// only the last move from the different promoted to moves will be stored ( move.To() is the same for all of them )
+			tiles[(GetPositionFromIndex(move.To()))] = move;
 		}
 
 		return tiles;
@@ -576,8 +572,7 @@ namespace chs
 
 		hashKey = hash();
 
-		/*std::cout << move << std::endl;
-		std::cout << *this << std::endl;*/
+		ET_DEBUG_ASSERT(Valid());
 
 		playedMoves.push_back(move);
 
@@ -622,7 +617,40 @@ namespace chs
 
 		hashKey = hash();
 
-		/*std::cout << *this << std::endl;*/
+		ET_DEBUG_ASSERT(Valid());
+
+		return true;
+	}
+
+	bool Board::MakeMove(Move move, bool& shouldPromote)
+	{
+		if (!MovePiece(move))
+			return false;
+
+		if (move.PromotedTo())
+			shouldPromote = true;
+		else
+			shouldPromote = false;
+
+		return true;
+	}
+
+	bool Board::Promote(PieceType piece)
+	{
+		if (IsKing(piece) || !piece)
+			return false;
+
+		Move move = playedMoves.back();
+		if (!move.PromotedTo())
+			return false;
+
+		if (!RemovePiece(move.To()))
+			return false;
+
+		if (!AddPiece(move.To(), piece))
+			return false;
+
+		ET_DEBUG_ASSERT(Valid());
 
 		return true;
 	}
@@ -738,11 +766,11 @@ namespace chs
 			{
 				if (prom)
 				{
+					moves.push_back(Move(index, possible[0], 0, 0, 0, 0, 0));
 					moves.push_back(Move(index, possible[0], 0, 0, 0, 0, BlackRook + isWhite));
 					moves.push_back(Move(index, possible[0], 0, 0, 0, 0, BlackKnight + isWhite));
 					moves.push_back(Move(index, possible[0], 0, 0, 0, 0, BlackBishop + isWhite));
 					moves.push_back(Move(index, possible[0], 0, 0, 0, 0, BlackQueen + isWhite));
-					moves.push_back(Move(index, possible[0], 0, 0, 0, 0, 0));
 				}
 				else
 					moves.push_back(Move(index, possible[0], 0, 0, 0, 0, 0));
@@ -796,11 +824,11 @@ namespace chs
 				{
 					if (prom)
 					{
+						moves.push_back(Move(index, index__, capture, 0, 0, 0, 0));
 						moves.push_back(Move(index, index__, capture, 0, 0, 0, BlackRook + isWhite));
 						moves.push_back(Move(index, index__, capture, 0, 0, 0, BlackKnight + isWhite));
 						moves.push_back(Move(index, index__, capture, 0, 0, 0, BlackBishop + isWhite));
 						moves.push_back(Move(index, index__, capture, 0, 0, 0, BlackQueen + isWhite));
-						moves.push_back(Move(index, index__, capture, 0, 0, 0, 0));
 					}
 					else
 						moves.push_back(Move(index, index__, capture, 0, enPassant, 0, 0));
