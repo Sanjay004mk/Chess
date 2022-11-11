@@ -60,9 +60,21 @@ namespace chs
 	extern bool IsMajor[13];
 	extern bool IsMinor[13];
 
+	extern int32_t scores[13];
+
 	inline Color GetColor(PieceType piece)
 	{
 		return (piece % 2 == 0) ? White : Black;
+	}
+
+	inline Color GetOppColor(Color c)
+	{
+		return c ^ 1;
+	}
+
+	inline Color GetOppColorFromPiece(PieceType piece)
+	{
+		return (piece % 2 == 0) ? Black : White;
 	}
 
 	inline bool IsWhite(PieceType piece)

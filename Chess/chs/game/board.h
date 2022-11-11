@@ -180,31 +180,12 @@ namespace chs
 #endif
 		}
 
-		int32_t EnPassantTile() const
-		{
-			if (data2 & 0x000000010u)
-				return 64;
-
-			int32_t offs = (int32_t)(data2 & 0x00000007u);
-			// isWhite
-			if (data2 & 0x00000008u)
-				return 16 + offs;
-			else
-				return 40 + offs;
-		}
+		int32_t EnPassantTile() const { return (int32_t)(data2 & 0x0000007fu); }
 		void EnPassantTile(int32_t index)
 		{
-			if (index > 63 || index < 0)
-			{
-				data2 |= 0x000000010u;
-				return;
-			}
-			// isWhite
-			if (index < 32)
-				data2 |= 0x00000008u;
-
-			data2 |= (uint32_t)(index % 8);
-
+			// clear enp
+			data2 = (data2 & ~0x0000007fu);
+			data2 |= ((uint32_t)index);
 #if defined(CHS_MOVE_STORE_EXTRA_INFO)
 			auto [file, rank] = IndexToFileRank(index);
 			enpassant[0] = file;
@@ -212,12 +193,12 @@ namespace chs
 #endif
 		}
 
-		int32_t CastlePerm() const { return (int32_t)((data2 & 0x000001e0u) >> 5); }
+		int32_t CastlePerm() const { return (int32_t)((data2 & 0x00000780u) >> 7); }
 		void CastlePerm(int32_t perm)
 		{
 			// clear perm
-			data2 = (data2 & ~0x000001e0u);
-			data2 |= ((uint32_t)perm << 5);
+			data2 = (data2 & ~0x00000780u);
+			data2 |= ((uint32_t)perm << 7);
 
 #if defined(CHS_MOVE_STORE_EXTRA_INFO)
 			castlePerms[0] = perm & CastleBlackKing;
@@ -227,12 +208,12 @@ namespace chs
 #endif
 		}
 
-		int32_t Full() const { return (int32_t)((data2 & 0x01fffe00u) >> 9); }
+		int32_t Full() const { return (int32_t)((data2 & 0x07fff800u) >> 11); }
 		void Full(int32_t full)
 		{
 			// clear perm
-			data2 = (data2 & ~0x01fffe00u);
-			data2 |= ((uint32_t)full << 9);
+			data2 = (data2 & ~0x07fff800u);
+			data2 |= ((uint32_t)full << 11);
 
 #if defined(CHS_MOVE_STORE_EXTRA_INFO)
 			this->full = full;
@@ -262,9 +243,9 @@ namespace chs
 		*   next 32 bits   
 		* 
 		*   0000  0000    0000  0000    0000  0000    0000  0000
-		*   ----  ----    ----  ----    ----  ----    ---1  1111  -> 'en passant tile'  Mask: 0x0000001f    Values: ( 0 - 15 / 16 ) 
-		*   ----  ----    ----  ----    ----  ---1    111-  ----  -> 'castle perm'      Mask: 0x000001e0    Values: ( 0 - 15 )
-		*   ----  ---1    1111  1111    1111  111-    ----  ----  -> 'full moves'       Mask: 0x01fffe00    Values: ( 1 - 65535 )
+		*   ----  ----    ----  ----    ----  ----    -111  1111  -> 'en passant tile'  Mask: 0x0000007f    Values: ( 0 - 64 ) 
+		*   ----  ----    ----  ----    ----  -111    1---  ----  -> 'castle perm'      Mask: 0x00000780    Values: ( 0 - 15 )
+		*   ----  -111    1111  1111    1111  1---    ----  ----  -> 'full moves'       Mask: 0x07fff800    Values: ( 1 - 65535 )
 		*/
 
 #if defined(CHS_MOVE_STORE_EXTRA_INFO)
@@ -286,19 +267,9 @@ namespace chs
 		friend ostream& operator<<(ostream& stream, const Move& move);
 	};
 
-	using GetMoveFn = std::vector<Move>(*)(const Board*, int32_t);
+	using GetMoveFn = void(*)(const Board*, int32_t, std::vector<Move>&);
 
 	extern GetMoveFn GetMoves[13];
-
-	struct MoveList
-	{
-		MoveList()
-		{
-			moves.reserve(64);
-		}
-		
-		std::vector<Move> moves;
-	};
 
 	class Board
 	{
@@ -332,12 +303,12 @@ namespace chs
 
 		std::string GetFEN() const;
 
-		// tmp
-		void StressTest() const;
+		size_t PerftTest(int32_t& capture, int32_t& ep, int32_t& castles, int32_t& prom, std::vector<std::vector<Move>>& depth_moves, int32_t depth = 6);
+		void PerftRoot(int32_t depth);
 
 	private:
 		std::vector<Move> GetAllMoves(Color side);
-		static Move GetBestMove(const Board* board, Color side, int32_t depth);
+		void GetAllMoves(std::vector<Move>& moves, Color side);
 
 		bool IsInCheck(Color side, std::vector<Move>& validMoves);
 		bool AddPiece(int32_t index, PieceType piece);
@@ -376,13 +347,13 @@ namespace chs
 
 		friend struct PieceIterator;
 
-		friend std::vector<Move> Slide(const Board* board, int32_t index, const glm::ivec2& direction);
-		friend std::vector<Move> PawnMoves(const Board* board, int32_t index);
-		friend std::vector<Move> RookMoves(const Board* board, int32_t index);
-		friend std::vector<Move> KnightMoves(const Board* board, int32_t index);
-		friend std::vector<Move> BishopMoves(const Board* board, int32_t index);
-		friend std::vector<Move> QueenMoves(const Board* board, int32_t index);
-		friend std::vector<Move> KingMoves(const Board* board, int32_t index);
+		friend void Slide(const Board* board, int32_t index, const glm::ivec2& direction, std::vector<Move>& moves);
+		friend void PawnMoves(const Board* board, int32_t index, std::vector<Move>& moves);
+		friend void RookMoves(const Board* board, int32_t index, std::vector<Move>& moves);
+		friend void KnightMoves(const Board* board, int32_t index, std::vector<Move>& moves);
+		friend void BishopMoves(const Board* board, int32_t index, std::vector<Move>& moves);
+		friend void QueenMoves(const Board* board, int32_t index, std::vector<Move>& moves);
+		friend void KingMoves(const Board* board, int32_t index, std::vector<Move>& moves);
 	};
 
 	inline void SetBit(uint64_t& bit_board, int32_t bit, int32_t position)

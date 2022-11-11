@@ -84,4 +84,27 @@ namespace chs
 		false,	  // king
 		false,
 	};
+
+	extern int32_t scores[13] =
+	{
+		0,     // empty
+
+		1,	   // pawn
+		1,
+
+		5,	  // rook
+		5,
+
+		3,	  // knight
+		3,
+
+		3,	  // bishop
+		3,
+
+		9,	  // queen
+		9,
+
+		10,	  // king
+		10,
+	};
 }

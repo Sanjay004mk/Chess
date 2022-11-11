@@ -126,36 +126,42 @@ namespace chs
 
 	void TileManager::OnMouseClick(const glm::vec2& mousePos)
 	{
-		clickedPos = ScreenPosToTilePos(mousePos);
-		clickedPieceDragOffset = (clickedPos - glm::vec2(4.5f)) - ScreenPosToWorldPos(mousePos);
-		dragPiece = board->GetTile(clickedPos);
-		if (moveTiles.count(clickedPos) == 0)
+		if (board)
 		{
-			shouldMove = false;
-			clickedPiecePos = clickedPos;
-			moveTiles.clear();
-			if (board->IsPiece(clickedPos))
-				moveTiles = board->GetMoveTiles(clickedPiecePos);
+			clickedPos = ScreenPosToTilePos(mousePos);
+			clickedPieceDragOffset = (clickedPos - glm::vec2(4.5f)) - ScreenPosToWorldPos(mousePos);
+			dragPiece = board->GetTile(clickedPos);
+			if (moveTiles.count(clickedPos) == 0)
+			{
+				shouldMove = false;
+				clickedPiecePos = clickedPos;
+				moveTiles.clear();
+				if (board->IsPiece(clickedPos))
+					moveTiles = board->GetMoveTiles(clickedPiecePos);
+			}
+			else
+				shouldMove = true;
 		}
-		else
-			shouldMove = true;
 	}
 
 	extern bool askPromotion = false;
 
 	void TileManager::OnMouseRelease(const glm::vec2& mousePos)
 	{
-		auto pos = ScreenPosToTilePos(mousePos);
-		if ((pos != clickedPos || shouldMove) && !askPromotion)
+		if (board)
 		{
-			if (moveTiles.count(pos) != 0)
+			auto pos = ScreenPosToTilePos(mousePos);
+			if ((pos != clickedPos || shouldMove) && !askPromotion)
 			{
-				board->MakeMove(moveTiles.at(pos), askPromotion);
+				if (moveTiles.count(pos) != 0)
+				{
+					board->MakeMove(moveTiles.at(pos), askPromotion);
+				}
+				moveTiles.clear();
 			}
-			moveTiles.clear();
-		}
 
-		dragPiece = 0;
+			dragPiece = 0;
+		}
 	}
 
 	bool TileManager::Promote(PieceType piece) 

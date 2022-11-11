@@ -17,7 +17,7 @@ namespace chs
 		memcpy_s(&v, sizeof(v), &vector, sizeof(vector));
 		return v;
 	}
-
+	static int32_t depth = 4;
 	void ChessLayer::OnAttach()
 	{
 		// renderpass
@@ -111,9 +111,9 @@ namespace chs
 		Resize(800, 800);
 
 		// starting positions 
-		//board = et::CreateRef<Board>("rnb1kbnr/pppp1ppp/8/4p1q1/P3P3/8/1PPP1PPP/RNBQKBNR b KQkq - 0 3");
-		board = et::CreateRef<Board>("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-		tileManager.board = board.get();
+		board = et::CreateRef<Board>("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1");
+		//board = et::CreateRef<Board>("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+		tileManager.board = board.get();	
 	}
 
 	void ChessLayer::OnDetach()
@@ -291,6 +291,10 @@ namespace chs
 							ET_LOG_INFO("{}", *board);
 						else
 							ET_LOG_INFO("hash : 0x{:x}", this->board->GetHash());
+					}
+					else if (e.GetKeyCode() == et::Key::U)
+					{
+						this->board->PerftRoot(depth--);
 					}
 				}
 				
