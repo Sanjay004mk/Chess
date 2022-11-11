@@ -111,8 +111,8 @@ namespace chs
 		Resize(800, 800);
 
 		// starting positions 
-		board = et::CreateRef<Board>("rnbqkbnr/pppp1P1p/8/8/6p1/8/PPP1PPPP/RNBQKBNR w KQkq - 0 5");
-		//board = et::CreateRef<Board>("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+		//board = et::CreateRef<Board>("rnb1kbnr/pppp1ppp/8/4p1q1/P3P3/8/1PPP1PPP/RNBQKBNR b KQkq - 0 3");
+		board = et::CreateRef<Board>("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 		tileManager.board = board.get();
 	}
 
@@ -278,6 +278,7 @@ namespace chs
 		dispatcher.Dispatch<et::KeyPressedEvent>([this](et::KeyPressedEvent& e)
 			{
 				bool control = et::Input::IsKeyDown(et::Key::LeftControl) || et::Input::IsKeyDown(et::Key::RightControl);
+				bool shift = et::Input::IsKeyDown(et::Key::LeftShift) || et::Input::IsKeyDown(et::Key::RightShift);
 				if (control)
 				{
 					if (e.GetKeyCode() == et::Key::Z)
@@ -285,7 +286,12 @@ namespace chs
 					else if (e.GetKeyCode() == et::Key::C)
 						ImGui::SetClipboardText(this->board->GetFEN().c_str());
 					else if (e.GetKeyCode() == et::Key::P)
-						ET_LOG_INFO("hash : 0x{:x}", this->board->GetHash());
+					{
+						if (shift)
+							ET_LOG_INFO("{}", *board);
+						else
+							ET_LOG_INFO("hash : 0x{:x}", this->board->GetHash());
+					}
 				}
 				
 				return false;

@@ -3,6 +3,10 @@
 
 #include "pieces.h"
 
+#if defined(CHS_DEBUG)
+//#define CHS_MOVE_STORE_EXTRA_INFO
+#endif
+
 namespace chs
 {
 	class Board;
@@ -71,6 +75,11 @@ namespace chs
 			// clear from
 			data = (data & ~0x0000003fu);
 			data |= (index & 0x0000003fu);
+#if defined(CHS_MOVE_STORE_EXTRA_INFO)
+			auto [file, rank] = IndexToFileRank(index);
+			from[0] = file;
+			from[1] = rank;
+#endif
 		}
 
 		int32_t To() const { return (int32_t)((data & 0x00000fc0u) >> 6); }
@@ -79,6 +88,12 @@ namespace chs
 			// clear to
 			data = (data & ~0x00000fc0u);
 			data |= ((index & 0x0000003fu) << 6);
+
+#if defined(CHS_MOVE_STORE_EXTRA_INFO)
+			auto [file, rank] = IndexToFileRank(index);
+			to[0] = file;
+			to[1] = rank;
+#endif
 		}
 
 		bool EnPassant() const { return data & 0x00001000; }
@@ -87,6 +102,10 @@ namespace chs
 			// clear en passant
 			data = (data & ~0x00001000u);
 			data |= ((isEnPassant & 1u) << 12);
+
+#if defined(CHS_MOVE_STORE_EXTRA_INFO)
+			enp = isEnPassant;
+#endif
 		}
 
 		bool PawnStart() const { return data & 0x00002000; }
@@ -95,6 +114,10 @@ namespace chs
 			// clear pawn start
 			data = (data & ~0x00002000u);
 			data |= ((isPawnStart & 1u) << 13);
+
+#if defined(CHS_MOVE_STORE_EXTRA_INFO)
+			pawnStart = isPawnStart;
+#endif
 		}
 
 		bool Castle() const { return data & 0x00004000u; }
@@ -103,6 +126,10 @@ namespace chs
 			// clear castle
 			data = (data & ~0x00004000u);
 			data |= ((isCastle & 1u) << 14);
+
+#if defined(CHS_MOVE_STORE_EXTRA_INFO)
+			castle = isCastle;
+#endif
 		}
 
 		bool Capture() const { return data & 0x00008000; }
@@ -111,6 +138,10 @@ namespace chs
 			// clear capture
 			data = (data & ~0x00008000u);
 			data |= ((isCapture & 1u) << 15);
+
+#if defined(CHS_MOVE_STORE_EXTRA_INFO)
+			capture = isCapture;
+#endif
 		}
 
 		PieceType PromotedTo() const { return (PieceType)((data & 0x000f0000) >> 16); }
@@ -119,6 +150,10 @@ namespace chs
 			// clear promoted to
 			data = (data & ~0x000f0000u);
 			data |= ((uint32_t)type << 16);
+
+#if defined(CHS_MOVE_STORE_EXTRA_INFO)
+			promotedTo = type;
+#endif
 		}
 
 		PieceType CapturedType() const { return (PieceType)((data & 0x00f00000) >> 20); }
@@ -127,6 +162,10 @@ namespace chs
 			// clear type
 			data = (data & ~0x00f00000u);
 			data |= ((uint32_t)type << 20);
+
+#if defined(CHS_MOVE_STORE_EXTRA_INFO)
+			capturedType = type;
+#endif
 		}
 
 		int32_t Fifty() const { return (int32_t)((data & 0xff000000u) >> 24); }
@@ -135,6 +174,10 @@ namespace chs
 			// clear fifty
 			data = (data & ~0xff000000u);
 			data |= ((uint32_t)fifty << 24);
+
+#if defined(CHS_MOVE_STORE_EXTRA_INFO)
+			this->fifty = fifty;
+#endif
 		}
 
 		int32_t EnPassantTile() const
@@ -161,6 +204,12 @@ namespace chs
 				data2 |= 0x00000008u;
 
 			data2 |= (uint32_t)(index % 8);
+
+#if defined(CHS_MOVE_STORE_EXTRA_INFO)
+			auto [file, rank] = IndexToFileRank(index);
+			enpassant[0] = file;
+			enpassant[1] = rank;
+#endif
 		}
 
 		int32_t CastlePerm() const { return (int32_t)((data2 & 0x000001e0u) >> 5); }
@@ -169,6 +218,13 @@ namespace chs
 			// clear perm
 			data2 = (data2 & ~0x000001e0u);
 			data2 |= ((uint32_t)perm << 5);
+
+#if defined(CHS_MOVE_STORE_EXTRA_INFO)
+			castlePerms[0] = perm & CastleBlackKing;
+			castlePerms[1] = perm & CastleBlackQueen;
+			castlePerms[2] = perm & CastleWhiteKing;
+			castlePerms[3] = perm & CastleWhiteQueen;
+#endif
 		}
 
 		int32_t Full() const { return (int32_t)((data2 & 0x01fffe00u) >> 9); }
@@ -177,6 +233,15 @@ namespace chs
 			// clear perm
 			data2 = (data2 & ~0x01fffe00u);
 			data2 |= ((uint32_t)full << 9);
+
+#if defined(CHS_MOVE_STORE_EXTRA_INFO)
+			this->full = full;
+#endif
+		}
+
+		bool operator==(const Move& other) const
+		{
+			return data == other.data;
 		}
 
 		uint32_t data = 0;
@@ -201,6 +266,21 @@ namespace chs
 		*   ----  ----    ----  ----    ----  ---1    111-  ----  -> 'castle perm'      Mask: 0x000001e0    Values: ( 0 - 15 )
 		*   ----  ---1    1111  1111    1111  111-    ----  ----  -> 'full moves'       Mask: 0x01fffe00    Values: ( 1 - 65535 )
 		*/
+
+#if defined(CHS_MOVE_STORE_EXTRA_INFO)
+		char from[2] = { 0 };
+		char to[2] = { 0 };
+		char enpassant[2] = { 0 };
+		bool pawnStart = false;
+		bool castle = false;
+		bool enp = false;
+		bool castlePerms[4] = {};
+		bool capture = false;
+		PieceType promotedTo = 0;
+		PieceType capturedType = 0;
+		int32_t fifty = 0;
+		int32_t full = 0;
+#endif
 
 		template <typename ostream>
 		friend ostream& operator<<(ostream& stream, const Move& move);
@@ -256,10 +336,14 @@ namespace chs
 		void StressTest() const;
 
 	private:
+		std::vector<Move> GetAllMoves(Color side);
+		static Move GetBestMove(const Board* board, Color side, int32_t depth);
+
+		bool IsInCheck(Color side, std::vector<Move>& validMoves);
 		bool AddPiece(int32_t index, PieceType piece);
 		bool RemovePiece(int32_t index, PieceType* piece = nullptr);
 		bool ShiftPiece(int32_t from, int32_t to, PieceType* piece = nullptr);
-		bool MovePiece(Move move);
+		bool MovePiece(Move& move);
 		bool Revert(Move move);
 		void LoadFromFen(std::string_view fen_string);
 		std::vector<Move> GetMoveTiles(int32_t position);
@@ -267,6 +351,9 @@ namespace chs
 		PieceType tiles[64] = { 0 };		
 		std::vector<std::pair<int32_t, PieceType>> capturedTiles;
 		std::vector<Move> playedMoves;
+
+		bool inCheck = false;
+		std::vector<Move> checkValidMoves;
 		// to be able to index from PieceType enum ( 0 = empty, ..., 12 = white king )
 		PieceList pieces[13] = {};
 

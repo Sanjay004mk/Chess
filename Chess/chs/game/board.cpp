@@ -464,11 +464,23 @@ namespace chs
 
 		auto moves = GetMoveTiles(idx);
 		std::unordered_map<glm::vec2, Move> tiles;
-		for (auto& move : moves)
+		if (!inCheck)
 		{
-			// if (!move.PromotedTo())
-			// only the last move from the different promoted to moves will be stored ( move.To() is the same for all of them )
-			tiles[(GetPositionFromIndex(move.To()))] = move;
+			for (auto& move : moves)
+			{
+				// if (!move.PromotedTo())
+				// only the last move from the different promoted to moves will be stored ( move.To() is the same for all of them )
+				tiles[(GetPositionFromIndex(move.To()))] = move;
+			}
+		}
+		else
+		{
+			for (auto& move : moves)
+			{
+				auto it = std::find(checkValidMoves.begin(), checkValidMoves.end(), move);
+				if (it != checkValidMoves.end())
+					tiles[(GetPositionFromIndex(move.To()))] = move;
+			}
 		}
 
 		return tiles;
@@ -479,7 +491,7 @@ namespace chs
 		return GetMoves[tiles[position]](this, position);
 	}
 
-	bool Board::MovePiece(Move move)
+	bool Board::MovePiece(Move& move)
 	{
 		if (!move.Valid())
 			return false;
@@ -554,27 +566,9 @@ namespace chs
 		if (!ShiftPiece(move.From(), move.To()))
 			return false;
 
-		if (IsAttacked(pieces[BlackKing + turn].positions[0], (~turn & 1u)))
-		{
-			auto moves = GetMoves[BlackKing](this, pieces[BlackKing + turn].positions[0]);
-			bool checkmate = true;
-			for (auto& move : moves)
-			{
-				if (!IsAttacked(move.To(), (~turn & 1u)))
-				{
-					checkmate = false;
-					break;
-				}
-			}
-			if (checkmate)
-				ET_LOG_INFO("CHECKMATE");
-		}
-
 		hashKey = hash();
 
 		ET_DEBUG_ASSERT(Valid());
-
-		playedMoves.push_back(move);
 
 		return true;
 	}
@@ -632,6 +626,27 @@ namespace chs
 		else
 			shouldPromote = false;
 
+		playedMoves.push_back(move);
+
+		// if king is attacked, check if that side has a valid moves that 
+		// results in the king not being attack ( IsInCheck() )
+		// store all the valid moves in a vector and only allow moves that are 
+		// in this vector when the player tries to move
+		if (inCheck = IsAttacked(pieces[BlackKing + turn].positions[0], turn ^ 1))
+		{
+			ET_LOG_INFO("CHECKMATE");
+			if (IsInCheck(turn, checkValidMoves))
+			{
+				auto win_str = turn ? "Black wins" : "White wins";
+				ET_LOG_INFO("Checkmate! {}", win_str);
+			}
+		}
+		else
+		{
+			inCheck = false;
+			checkValidMoves.clear();
+		}
+
 		return true;
 	}
 
@@ -665,6 +680,58 @@ namespace chs
 
 		playedMoves.pop_back();
 		return true;
+	}
+
+	bool Board::IsInCheck(Color c, std::vector<Move>& validMoves)
+	{
+		validMoves.clear();
+		auto copy = *this;
+		auto moves = GetAllMoves(c);
+
+		bool check = true;
+		// for every possible move the given side can make,
+		// check if there is a move where the king is not attacked
+		// if there is, the side is not in check
+		for (size_t i = 0; i < moves.size(); i++)
+		{
+			auto move = moves[i];
+			copy.MovePiece(moves[i]);
+
+			if (!copy.IsAttacked(copy.pieces[BlackKing + c].positions[0], c ^ 1))
+			{
+				check = false;
+				// moves[i] gets filled with extra information by 'MovePiece'
+				// so use a copy of it without the extra info
+				validMoves.push_back(move);
+			}
+
+			copy.Revert(moves[i]);
+		}
+
+		return check;
+	}
+
+	std::vector<Move> Board::GetAllMoves(Color side)
+	{
+		std::vector<Move> moves;
+		for (uint32_t i = 1; i < 13; i++)
+		{
+			if (GetColor(i) != side)
+				continue;
+
+			for (uint32_t count = 0; count < pieces[i].count; count++)
+			{
+				auto piece_moves = GetMoves[i](this, pieces[i].positions[count]);
+				moves.insert(moves.end(), piece_moves.begin(), piece_moves.end());
+			}
+		}
+
+		return moves;
+	}
+
+	Move Board::GetBestMove(const Board* board, Color side, int32_t depth)
+	{
+		return {};
 	}
 
 	PieceType Board::GetTile(const glm::vec2& tile)
@@ -1031,14 +1098,14 @@ namespace chs
 
 		int32_t tile_index = -1;
 		Position position(index);
-		int32_t pawn_offs = by == White ? 1 : -1;
+		int32_t pawn_offs = by == White ? -1 : 1;
 
 		{
 			// pawns
 			std::vector<int32_t> x = { 1, -1 };
 			for (auto& __x : x)
 			{
-				if (position.Move(pawn_offs, __x, tile_index))
+				if (position.Move(__x, pawn_offs, tile_index))
 				{
 					if (tiles[tile_index])
 						if ((GetColor(tiles[tile_index]) == by) && 
@@ -1099,7 +1166,7 @@ namespace chs
 					if ((GetColor(tiles[tile_index]) == by) &&
 						(SamePiece(tiles[tile_index], other) || IsQueen(tiles[tile_index])))
 						attacked = true;
-					break;
+					return;
 				}
 				copy_pos.position += direction;
 			}
