@@ -284,8 +284,6 @@ namespace chs
 
 	using GetMoveFn = void(*)(const Board*, int32_t, std::vector<Move>&);
 
-	extern GetMoveFn GetMoves[13];
-
 	class Board
 	{
 	public:
@@ -304,6 +302,7 @@ namespace chs
 		bool IsPiece(int32_t index);
 
 		bool IsAttacked(int32_t index, Color by) const;
+		bool IsRepeated() const { return std::find(poskeys.begin(), poskeys.end(), hashKey) != poskeys.end(); }
 
 		PieceIterator begin() { PieceIterator it(0, tiles); if (!it) ++it; return it; }
 		PieceIterator end() { return PieceIterator(64, tiles); }
@@ -324,6 +323,7 @@ namespace chs
 	private:
 		std::vector<Move> GetAllMoves(Color side);
 		void GetAllMoves(std::vector<Move>& moves, Color side);
+		int32_t GetScore(Color side) const;
 
 		bool IsInCheck(Color side, std::vector<Move>& validMoves);
 		bool AddPiece(int32_t index, PieceType piece);
@@ -337,6 +337,7 @@ namespace chs
 		PieceType tiles[64] = { 0 };		
 		std::vector<std::pair<int32_t, PieceType>> capturedTiles;
 		std::vector<Move> playedMoves;
+		std::vector<size_t> poskeys;
 
 		bool inCheck = false;
 		std::vector<Move> checkValidMoves;

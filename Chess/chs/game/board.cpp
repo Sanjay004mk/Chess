@@ -684,6 +684,7 @@ namespace chs
 				return false;
 		}
 
+		poskeys.push_back(hashKey);
 		hashKey = hash();
 
 		ET_DEBUG_ASSERT(Valid());
@@ -737,7 +738,8 @@ namespace chs
 				return false;
 		}
 
-		hashKey = hash();
+		hashKey = poskeys.back();
+		poskeys.pop_back();
 
 		ET_DEBUG_ASSERT(Valid());
 
@@ -799,6 +801,8 @@ namespace chs
 
 		move.PromotedTo(piece);
 
+		poskeys.back() = hashKey = hash();
+
 		ET_DEBUG_ASSERT(Valid());
 
 		return true;
@@ -847,6 +851,15 @@ namespace chs
 		}
 
 		return check;
+	}
+
+	int32_t Board::GetScore(Color side) const
+	{
+		int32_t score = 0;
+		for (uint32_t i = 1 + side; i < 13; i += 2)
+			score += scores[i] * pieces[i].count;
+
+		return score;
 	}
 
 	std::vector<Move> Board::GetAllMoves(Color side)
