@@ -143,7 +143,8 @@ namespace chs
 		return true;
 	}
 
-	Board::Board(std::string_view fen_string)
+	Board::Board(std::string_view fen_string, const BoardSpecification& specs)
+		: specs(specs)
 	{
 		LoadFromFen(fen_string);
 		hashKey = hash();

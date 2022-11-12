@@ -109,17 +109,27 @@ namespace chs
 		}
 		// initialize pipeline and framebuffer
 		Resize(800, 800);
-		PreComputeBoardHashes();
-
-		// starting positions 
-		board = et::CreateRef<Board>("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1");
-		//board = et::CreateRef<Board>("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-		tileManager.board = board.get();	
+		PreComputeBoardHashes();	
 	}
 
 	void ChessLayer::OnDetach()
 	{
 
+	}
+
+	void ChessLayer::StartNewGame()
+	{
+		StartGame("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+	}
+
+	bool ChessLayer::StartGame(std::string_view fen_string)
+	{
+		Board temp(fen_string);
+		if (!temp.Valid())
+			return false;
+		board = et::CreateRef<Board>(temp);
+		tileManager.board = board.get();
+		return true;
 	}
 
 	void ChessLayer::OnUpdate(et::TimeStep ts)
@@ -145,25 +155,29 @@ namespace chs
 	}
 
 	extern bool askPromotion;
+	static char fen[256] = {};
 
-	void ChessLayer::OnImGuiRender()
+	void ChessLayer::DisplayBoardUI()
 	{
 		ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoDecoration;
 		window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
 		window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
 
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.f, 0.f));
-		ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(CLEAR_COLOR, 1.f));
 		ImGuiViewport* viewport = ImGui::GetMainViewport();
 		ImVec2 viewport_size = viewport->Size;
 		ImVec2 viewport_pos = viewport->Pos;
 
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.f, 0.f));
+		ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(CLEAR_COLOR, 1.f));
+
+		float wtos = tileManager.WorldToScreenUnit();
+
 		if (askPromotion)
 		{
 			auto pos = tileManager.WorldPosToScreenPos(glm::vec2(-3.5f, 0.5f));
-			float width = tileManager.WorldToScreenUnit();
+			
 			// the turn will have changed after board->MoveTile() so invert it
 			bool isWhite = !board->GetTurn();
 			PieceType piece = BlackRook + isWhite;
@@ -173,35 +187,14 @@ namespace chs
 			{
 				ImGui::SetNextWindowPos(ImVec2(viewport_pos.x + pos.x, viewport_pos.y + pos.y));
 				ImGui::Begin(id, nullptr, window_flags);
-				if (ImGui::ImageButton(textures[piece]->GetImGuiTextureID(), ImVec2(width, width)))
+				if (ImGui::ImageButton(textures[piece]->GetImGuiTextureID(), ImVec2(wtos, wtos)))
 					tileManager.Promote(piece);
 				ImGui::End();
 				id[0]++;
 				piece += 2;
-				pos.x += 2.f * width;;
+				pos.x += 2.f * wtos;;
 			}
 		}
-
-#if defined(CHS_DEBUG)
-		ImGui::SetNextWindowPos(viewport_pos);
-		ImGui::Begin("fps", nullptr, window_flags);
-		ImGui::Text("%.4f", ImGui::GetIO().Framerate);
-		ImGui::End();
-#endif
-
-		ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
-		{
-			ImGui::Begin("Settings");
-			static char fen[256] = {};
-			ImGui::InputText("fen", fen, 256);
-			if (ImGui::Button("Load Fen"))
-			{
-				board = et::CreateRef<Board>(fen);
-				tileManager.board = board.get();
-			}
-			ImGui::End();
-		}
-		ImGui::PopFont();
 
 		// file and rank
 		{
@@ -219,7 +212,7 @@ namespace chs
 					ImGui::Begin(prstr, nullptr, window_flags);
 					ImGui::Text("%c", prstr[0]);
 					ImGui::End();
-					pos.y += tileManager.WorldToScreenUnit();
+					pos.y += wtos;
 					prstr[0]--;
 				}
 
@@ -231,7 +224,7 @@ namespace chs
 					ImGui::Begin(prstr, nullptr, window_flags);
 					ImGui::Text("%c", prstr[0]);
 					ImGui::End();
-					pos.x += tileManager.WorldToScreenUnit();
+					pos.x += wtos;
 					prstr[0]++;
 				}
 			}
@@ -267,8 +260,114 @@ namespace chs
 			ImGui::End();
 		}
 
+		// home button
+		{
+			ImGui::SetNextWindowPos(ImVec2(viewport_pos.x + wtos * 0.1f, viewport_pos.y + wtos * 0.1f));
+			ImGui::Begin("back_button", nullptr, window_flags);
+			if (ImGui::Button("<-", ImVec2(wtos * 0.8f, wtos * 0.8f)))
+			{
+				board.reset();
+				tileManager.board = nullptr;
+				memset(fen, 0, sizeof(fen));
+			}
+			ImGui::End();
+		}
+
 		ImGui::PopStyleVar(3);
 		ImGui::PopStyleColor();
+	}
+
+	void ChessLayer::DisplayMainMenu()
+	{
+		ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoDecoration;
+		window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
+		window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
+
+		ImGuiViewport* viewport = ImGui::GetMainViewport();
+		ImVec2 viewport_size = viewport->Size;
+		ImVec2 viewport_pos = viewport->Pos;
+
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.f, 0.f));
+		ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(CLEAR_COLOR, 1.f));
+
+		float wtos = tileManager.WorldToScreenUnit();
+
+		ImGui::SetNextWindowPos(viewport_pos);
+		ImGui::SetNextWindowSize(viewport_size);
+		ImGui::Begin("MENU", nullptr, window_flags);
+		// mode selection ( vs player / computer )
+		if (inMainMenu)
+		{
+			// tmp
+			ImVec2 text_size = ImGui::CalcTextSize("Vs Player");
+			text_size.x += wtos;
+			text_size.y += wtos;
+
+			ImGui::SetCursorPosY((viewport_size.y - text_size.y) / 2.f);
+			ImGui::SetCursorPosX((viewport_size.x - text_size.x) / 2.f);
+			ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(wtos / 2.f, wtos / 2.f));
+			if (ImGui::Button("Vs Player", ImVec2(text_size)))
+				inMainMenu = false;
+
+			ImGui::PopStyleVar();
+		}
+		// start new game / load from fen
+		else
+		{
+			// tmp
+			ImVec2 text_size = ImGui::CalcTextSize("Start New Game");
+			text_size.x += wtos;
+			text_size.y += wtos;
+
+			ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(wtos / 2.f, wtos / 2.f));
+			ImGui::SetCursorPosY((viewport_size.y - text_size.y * 4) / 2.f);
+			ImGui::SetCursorPosX((viewport_size.x - text_size.x) / 2.f);
+
+			if (ImGui::Button("Start New Game", ImVec2(text_size)))
+			{
+				StartNewGame();
+				inMainMenu = true;
+			}
+
+			static float fen_inp_len = 24 * ImGui::GetFontSize();
+			ImGui::SetCursorPosX((viewport_size.x - fen_inp_len) / 2.f);
+			ImGui::SetCursorPosY((viewport_size.y - text_size.y ) / 2.f);
+			ImGui::PushItemWidth(fen_inp_len);
+			ImGui::InputText("##fen", fen, 256);
+
+			text_size.x = wtos + ImGui::CalcTextSize("Load From FEN").x;
+			ImGui::SetCursorPosY((viewport_size.y + text_size.y * 2.f) / 2.f);
+			ImGui::SetCursorPosX((viewport_size.x - text_size.x) / 2.f);
+			if (ImGui::Button("Load From FEN", ImVec2(text_size)))
+			{
+				if (StartGame(fen))
+					inMainMenu = true;
+			}
+
+			ImGui::PopStyleVar();
+		}
+		ImGui::End();
+
+		ImGui::PopStyleVar(3);
+		ImGui::PopStyleColor();
+	}
+
+	void ChessLayer::OnImGuiRender()
+	{
+		if (board)
+			DisplayBoardUI();
+		else
+			DisplayMainMenu();
+
+#if defined(CHS_DEBUG)
+		ImGui::SetNextWindowPos(viewport_pos);
+		ImGui::Begin("fps", nullptr, window_flags);
+		ImGui::Text("%.4f", ImGui::GetIO().Framerate);
+		ImGui::End();
+#endif
+		
 	}
 
 	static bool perft = false;
@@ -301,31 +400,35 @@ namespace chs
 				bool control = et::Input::IsKeyDown(et::Key::LeftControl) || et::Input::IsKeyDown(et::Key::RightControl);
 				bool shift = et::Input::IsKeyDown(et::Key::LeftShift) || et::Input::IsKeyDown(et::Key::RightShift);
 
-				if (perft)
+				if (board)
 				{
-					perft = false;
-					int32_t depth = e.GetKeyCode() - et::Key::D0; 
-					if (depth > 0 && depth < 10)
-						this->board->PerftRoot(depth);
-				}
-				else if (control)
-				{
-					if (e.GetKeyCode() == et::Key::Z)
-						this->board->Undo();
-					else if (e.GetKeyCode() == et::Key::C)
-						ImGui::SetClipboardText(this->board->GetFEN().c_str());
-					else if (e.GetKeyCode() == et::Key::P)
+					if (perft)
 					{
-						if (shift)
-							ET_LOG_INFO("{}", *board);
-						else
-							ET_LOG_INFO("hash : 0x{:x}", this->board->GetHash());
+						perft = false;
+						int32_t depth = e.GetKeyCode() - et::Key::D0;
+						if (depth > 0 && depth < 10)
+							this->board->PerftRoot(depth);
 					}
-					else if (e.GetKeyCode() == et::Key::U)
-						perft = true;
-
+					else if (control)
+					{
+						if (e.GetKeyCode() == et::Key::Z)
+							this->board->Undo();
+						else if (e.GetKeyCode() == et::Key::C)
+							ImGui::SetClipboardText(this->board->GetFEN().c_str());
+						else if (e.GetKeyCode() == et::Key::P)
+						{
+							if (shift)
+								ET_LOG_INFO("{}", *board);
+							else
+								ET_LOG_INFO("hash: 0x{:x}", this->board->GetHash());
+						}
+						else if (e.GetKeyCode() == et::Key::U)
+							perft = true;
+						else if (e.GetKeyCode() == et::Key::N)
+							StartNewGame();
+					}
 				}
-				
+
 				return false;
 			});
 	}

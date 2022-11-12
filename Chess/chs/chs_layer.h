@@ -18,9 +18,15 @@ namespace chs
 		virtual void OnEvent(et::Event& e) override;
 
 	private:
+		void StartNewGame();
+		bool StartGame(std::string_view fen_string);
 		void Resize(uint32_t newWidth, uint32_t newHeight);
+		void DisplayBoardUI();
+		void DisplayMainMenu();
 
 		uint32_t width = 0, height = 0;
+
+		bool inMainMenu = true;
 
 		TileManager tileManager;
 		et::Ref<Board> board;

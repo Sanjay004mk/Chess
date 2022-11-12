@@ -284,10 +284,16 @@ namespace chs
 
 	using GetMoveFn = void(*)(const Board*, int32_t, std::vector<Move>&);
 
+	// used for vs Player / vs Computer
+	struct BoardSpecification
+	{
+		Color player[2] = { White, Black };
+	};
+
 	class Board
 	{
 	public:
-		Board(std::string_view fen_string);
+		Board(std::string_view fen_string, const BoardSpecification& specs = {});
 		~Board() {}
 
 		std::unordered_map<glm::vec2, Move> GetMoveTiles(const glm::vec2& position);
@@ -334,6 +340,7 @@ namespace chs
 		void LoadFromFen(std::string_view fen_string);
 		std::vector<Move> GetMoveTiles(int32_t position);
 
+		BoardSpecification specs;
 		PieceType tiles[64] = { 0 };		
 		std::vector<std::pair<int32_t, PieceType>> capturedTiles;
 		std::vector<Move> playedMoves;
