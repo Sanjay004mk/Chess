@@ -761,22 +761,20 @@ namespace chs
 
 		// if king is attacked, check if that side has a valid moves that 
 		// results in the king not being attack ( IsInCheck() )
-		// store all the valid moves in a vector and only allow moves that are 
-		// in this vector when the player tries to move
 		if (inCheck = IsAttacked(pieces[BlackKing + turn].positions[0], GetOppColor(turn)))
 		{
-			if (IsInCheck(turn, checkValidMoves))
+			if (IsInCheck(turn))
 			{
 				auto win_str = turn ? "Black wins" : "White wins";
 				ET_LOG_INFO("CHECKMATE! {}", win_str);
+				checkmate = true;
 			}
 			else
 				ET_LOG_INFO("CHECKMATE!");
 		}
 		else
 		{
-			inCheck = false;
-			checkValidMoves.clear();
+			inCheck = checkmate = false;
 		}
 
 		return true;
@@ -820,38 +818,29 @@ namespace chs
 		playedMoves.pop_back();
 
 		// reset checkmate
-		inCheck = false;
-		checkValidMoves.clear();
+		inCheck = checkmate = false;
 
 		return true;
 	}
 
-	bool Board::IsInCheck(Color c, std::vector<Move>& validMoves)
+	bool Board::IsInCheck(Color c)
 	{
-		validMoves.clear();
 		auto moves = GetAllMoves(c);
 
-		bool check = true;
 		// for every possible move the given side can make,
 		// check if there is a move where the king is not attacked
 		// if there is, the side is not in check
 		for (size_t i = 0; i < moves.size(); i++)
 		{
-			auto move = moves[i];
 			MovePiece(moves[i]);
 
 			if (!IsAttacked(pieces[BlackKing + c].positions[0], GetOppColor(c) ))
-			{
-				check = false;
-				// moves[i] gets filled with extra information by 'MovePiece'
-				// so use a copy of it without the extra info
-				validMoves.push_back(move);
-			}
+				return false;
 
 			Revert(moves[i]);
 		}
 
-		return check;
+		return true;
 	}
 
 	int32_t Board::GetScore(Color side) const

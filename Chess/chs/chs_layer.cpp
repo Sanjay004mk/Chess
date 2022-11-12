@@ -260,6 +260,25 @@ namespace chs
 			ImGui::End();
 		}
 
+		// display checkmate
+		{
+			static float padding = 35.f;
+			auto [mate, color] = board->InCheckMate();
+			if (mate)
+			{
+				ImVec2 text_size = ImGui::CalcTextSize("Checkmate!");
+				text_size.x += padding;
+				text_size.y += padding;
+
+				ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(padding / 2.f, padding / 2.f));
+				ImGui::SetNextWindowPos(ImVec2(viewport_pos.x + (viewport_size.x - text_size.x) / 2.f, viewport_pos.y + (viewport_size.y - text_size.y) / 2.f));
+				ImGui::Begin("Checkmate!", nullptr, window_flags);
+				ImGui::Text("Checkmate!");
+				ImGui::End();
+				ImGui::PopStyleVar();
+			}
+		}
+
 		// home button
 		{
 			ImGui::SetNextWindowPos(ImVec2(viewport_pos.x + wtos * 0.1f, viewport_pos.y + wtos * 0.1f));

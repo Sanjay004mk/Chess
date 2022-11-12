@@ -309,6 +309,7 @@ namespace chs
 
 		bool IsAttacked(int32_t index, Color by) const;
 		bool IsRepeated() const { return std::find(poskeys.begin(), poskeys.end(), hashKey) != poskeys.end(); }
+		std::pair<bool, Color> InCheckMate() const { return { checkmate, turn }; }
 
 		PieceIterator begin() { PieceIterator it(0, tiles); if (!it) ++it; return it; }
 		PieceIterator end() { return PieceIterator(64, tiles); }
@@ -331,7 +332,7 @@ namespace chs
 		void GetAllMoves(std::vector<Move>& moves, Color side);
 		int32_t GetScore(Color side) const;
 
-		bool IsInCheck(Color side, std::vector<Move>& validMoves);
+		bool IsInCheck(Color side);
 		bool AddPiece(int32_t index, PieceType piece);
 		bool RemovePiece(int32_t index, PieceType* piece = nullptr);
 		bool ShiftPiece(int32_t from, int32_t to, PieceType* piece = nullptr);
@@ -347,7 +348,7 @@ namespace chs
 		std::vector<size_t> poskeys;
 
 		bool inCheck = false;
-		std::vector<Move> checkValidMoves;
+		bool checkmate = false;
 		// to be able to index from PieceType enum ( 0 = empty, ..., 12 = white king )
 		PieceList pieces[13] = {};
 
