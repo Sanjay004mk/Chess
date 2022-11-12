@@ -5,6 +5,32 @@
 
 namespace chs
 {
+	static constexpr size_t num_tile_hashes = 63 | (15 << 6);
+	static constexpr size_t num_enp_hashes = 63;
+	static constexpr size_t num_castle_hashes = 15;
+	static constexpr size_t num_turn_hashes = 2;
+	static size_t PRE_COMPUTED_TILE_HASHES[num_tile_hashes] = {};
+	static size_t PRE_COMPUTED_ENP_HASHES[num_enp_hashes] = {};
+	static size_t PRE_COMPUTED_CASTLE_HASHES[num_castle_hashes] = {};
+	static size_t PRE_COMPUTED_TURN_HASHES[num_turn_hashes] = {};
+
+	void PreComputeBoardHashes()
+	{
+		auto hasher = std::hash<size_t>();
+
+		for (size_t i = 0; i < num_tile_hashes; i++)
+			PRE_COMPUTED_TILE_HASHES[i] = hasher(i);
+
+		for (size_t i = 0; i < num_enp_hashes; i++)
+			PRE_COMPUTED_ENP_HASHES[i] = hasher(i);
+
+		for (size_t i = 0; i < num_castle_hashes; i++)
+			PRE_COMPUTED_CASTLE_HASHES[i] = hasher(i);
+
+		for (size_t i = 0; i < num_turn_hashes; i++)
+			PRE_COMPUTED_TURN_HASHES[i] = hasher(i);
+	}
+
 	void EmptyMoves(const Board*, int32_t, std::vector<Move>&)
 	{
 	}
@@ -335,7 +361,7 @@ namespace chs
 
 		for (auto move : depth_moves[depth])
 		{
-			ET_ASSERT_NO_MSG(move.Valid());
+			ET_DEBUG_ASSERT(move.Valid());
 			MovePiece(move);
 
 			if (!IsAttacked(pieces[BlackKing + GetOppColor(turn)].positions[0], turn))
@@ -447,11 +473,10 @@ namespace chs
 		auto pos = (it - pieces[p].positions.begin());
 
 		// 'index' is not the last element
+		// assign the value of the last element to the removed element position
 		if (pos != (pieces[p].count - 1))
-		{
-			for (size_t i = pos; i < pieces[p].count; i++)
-				pieces[p].positions[i] = pieces[p].positions[i + 1];
-		}
+			pieces[p].positions[pos] = pieces[p].positions[pieces[p].count - 1];
+
 		pieces[p].count--;
 
 		// clear from bit board
@@ -527,29 +552,39 @@ namespace chs
 			return {};
 
 		auto moves = GetMoveTiles(idx);
-		std::unordered_map<glm::vec2, Move> tiles;
-		for (auto& move : moves)
-		{
-			// if (!move.PromotedTo())
-			// only the last move from the different promoted to moves will be stored ( move.To() is the same for all of them )
-			tiles[(GetPositionFromIndex(move.To()))] = move;
-		}
-
 		// check if move results in current side ending up in check
-		std::vector<glm::vec2> rem_tiles;
-		for (auto [pos, move] : tiles)
+		auto copy = moves;
+		for (auto& move : copy)
 		{
+			auto c_move = move;
 			MovePiece(move);
 
 			// move results in player exposing king to check
 			if (IsAttacked(pieces[BlackKing + t].positions[0], GetOppColor(t)))
-				rem_tiles.push_back(pos);
+			{
+				auto it = std::find(moves.begin(), moves.end(), c_move);
+				ET_DEBUG_ASSERT(it != moves.end());
+				moves.erase(it);
+			}
 
 			Revert(move);
 		}
-		// remove all moves that result in player exposing king to check
-		for (auto& pos : rem_tiles)
-			tiles.erase(pos);
+
+		// remove promotion moves to allow the player to select which piece to promote to
+		for (auto& move : moves)
+		{
+			if (move.IsPromoted())
+			{
+				// also clears isPromoted
+				move.PromotedTo(0);
+				// so set it to true again
+				move.IsPromoted(true);
+			}
+		}
+
+		std::unordered_map<glm::vec2, Move> tiles;
+		for (auto& move : moves)
+			tiles[(GetPositionFromIndex(move.To()))] = move;
 
 		return tiles;
 	}
@@ -564,10 +599,29 @@ namespace chs
 		return moves;
 	}
 
+	static inline uint32_t castle_mask(int32_t index)
+	{
+		// rooks
+		if (index == 0)
+			return ~CastleWhiteQueen;
+		else if (index == 7)
+			return ~CastleWhiteKing;
+		else if (index == 56)
+			return ~CastleBlackQueen;
+		else if (index == 63)
+			return ~CastleBlackKing;
+		// kings
+		else if (index == 4)
+			return ~(CastleWhiteKing | CastleWhiteQueen);
+		else if (index == 60)
+			return ~(CastleBlackKing | CastleBlackQueen);
+
+		return 15u;
+	}
+
 	bool Board::MovePiece(Move& move)
 	{
-		if (!move.Valid())
-			return false;
+		ET_DEBUG_ASSERT(move.Valid());
 
 		move.Fifty(fiftyMove);
 		move.Full(fullMoves);
@@ -589,53 +643,8 @@ namespace chs
 			if (!RemovePiece(cap_tile, &rem_piece))
 				return false;
 
-			// castle rights lost
-			if (IsRook(rem_piece))
-			{
-				bool isWhite = IsWhite(rem_piece);
-				if (isWhite)
-				{
-					if (tiles[0])
-					{
-						if (!IsRook(tiles[0]))
-							ClearCastle(castlePermission, White, true);
-					}
-					else
-							ClearCastle(castlePermission, White, true);
-
-					if (tiles[7])
-					{
-						if (!IsRook(tiles[7]))
-							ClearCastle(castlePermission, White, false);
-
-					}
-					else
-							ClearCastle(castlePermission, White, false);
-				}
-				else
-				{
-					// if there is a rook queen side,
-					// clear king side castle
-					if (tiles[56])
-					{
-						if (!IsRook(tiles[56]))
-							ClearCastle(castlePermission, Black, true);
-					}
-					else
-							ClearCastle(castlePermission, Black, true);
-					
-					if (tiles[63])
-					{
-						if (!IsRook(tiles[63]))
-							ClearCastle(castlePermission, Black, false);
-
-					}
-					else
-						ClearCastle(castlePermission, Black, false);
-				}
-					
-
-			}
+			// castle rights
+			castlePermission &= castle_mask(move.To());
 
 			capturedTiles.push_back({ cap_tile, rem_piece });
 			move.CapturedType(rem_piece);
@@ -653,27 +662,9 @@ namespace chs
 
 		if (IsPawn(tiles[move.From()]))
 			fiftyMove = 0;
-		// castle rights lost
-		else if (IsKing(tiles[move.From()]))
-		{
-			ClearCastle(castlePermission, GetColor(tiles[move.From()]), true);
-			ClearCastle(castlePermission, GetColor(tiles[move.From()]), false);
-		}
-		else if (IsRook(tiles[move.From()]))
-		{
-			int32_t castle = 0;
-			int32_t from = move.From();
-			if (from == 0)
-				castle = CastleWhiteQueen;
-			else if (from == 7)
-				castle = CastleWhiteKing;
-			else if (from == 56)
-				castle = CastleBlackQueen;
-			else if (from == 63)
-				castle = CastleBlackKing;
 
-			castlePermission ^= castle;
-		}
+		// castle rights 
+		castlePermission &= castle_mask(move.From());
 
 		if (move.PawnStart())
 			enPassant = PieceToEnPassant(move.To());
@@ -682,6 +673,16 @@ namespace chs
 
 		if (!ShiftPiece(move.From(), move.To()))
 			return false;
+
+		if (move.PromotedTo())
+		{
+			ET_DEBUG_ASSERT(move.IsPromoted() && IsPawn(tiles[move.To()]));
+
+			if (!RemovePiece(move.To()))
+				return false;
+			if (!AddPiece(move.To(), move.PromotedTo()))
+				return false;
+		}
 
 		hashKey = hash();
 
@@ -726,6 +727,16 @@ namespace chs
 
 		}
 
+		if (move.PromotedTo())
+		{
+			ET_DEBUG_ASSERT(move.IsPromoted());
+
+			if (!RemovePiece(move.From()))
+				return false;
+			if (!AddPiece(move.From(), BlackPawn + turn))
+				return false;
+		}
+
 		hashKey = hash();
 
 		ET_DEBUG_ASSERT(Valid());
@@ -738,7 +749,7 @@ namespace chs
 		if (!MovePiece(move))
 			return false;
 
-		if (move.PromotedTo())
+		if (move.IsPromoted())
 			shouldPromote = true;
 		else
 			shouldPromote = false;
@@ -773,8 +784,8 @@ namespace chs
 		if (IsKing(piece) || !piece)
 			return false;
 
-		Move move = playedMoves.back();
-		if (!move.PromotedTo())
+		Move& move = playedMoves.back();
+		if (!move.IsPromoted())
 			return false;
 
 		PieceType p = 0;
@@ -785,6 +796,8 @@ namespace chs
 
 		if (!AddPiece(move.To(), piece))
 			return false;
+
+		move.PromotedTo(piece);
 
 		ET_DEBUG_ASSERT(Valid());
 
@@ -886,20 +899,19 @@ namespace chs
 
 	inline void hash_combine(size_t& seed, size_t other)
 	{
-		seed ^= other + 0x9e3779b9 + (seed << 6) + (seed >> 2);;
+		seed ^= other + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 	}
 
 	size_t Board::hash() const
 	{
 		size_t seed = 0;
-		auto hasher = std::hash<size_t>();
 		for (int32_t i = 0; i < 64; i++)
 			if (tiles[i])
-				hash_combine(seed, hasher((size_t)tiles[i] | (size_t)(i << 3)));
+				hash_combine(seed, PRE_COMPUTED_TILE_HASHES[tiles[i] | (i << 3)]);
 			
-		hash_combine(seed, hasher(enPassant));
-		hash_combine(seed, hasher(castlePermission));
-		hash_combine(seed, hasher(turn));
+		hash_combine(seed, PRE_COMPUTED_ENP_HASHES[enPassant]);
+		hash_combine(seed, PRE_COMPUTED_CASTLE_HASHES[castlePermission]);
+		hash_combine(seed, PRE_COMPUTED_TURN_HASHES[turn]);
 
 		return seed;
 	}
@@ -926,6 +938,45 @@ namespace chs
 		}
 
 		glm::ivec2 position;
+	};
+
+	// side capture / en passant capture
+	static void side_capture (const Position& position, int32_t forward, const PieceType tiles[64], int32_t enPassant, bool isWhite, bool prom, int32_t index, std::vector<Move>& moves, int32_t side, int32_t& index__)
+	{
+		int32_t enP = 0;
+		if (position.Move(side, forward, index__))
+		{
+			bool valid = true;
+			if (tiles[index__])
+			{
+				if (!(IsWhite(tiles[index__]) ^ isWhite))
+					valid = false;
+			}
+			else if (enPassant == index__)
+			{
+				auto idx = EnPassantToPiece(enPassant);
+				if (!(IsWhite(tiles[idx]) ^ isWhite))
+					valid = false;
+
+				enP = 1;
+			}
+			else
+				valid = false;
+
+			if (valid)
+			{
+				if (prom)
+				{
+					moves.push_back(Move(index, index__, 1, 0, 0, 0, BlackRook + isWhite));
+					moves.push_back(Move(index, index__, 1, 0, 0, 0, BlackKnight + isWhite));
+					moves.push_back(Move(index, index__, 1, 0, 0, 0, BlackBishop + isWhite));
+					moves.push_back(Move(index, index__, 1, 0, 0, 0, BlackQueen + isWhite));
+				}
+				else
+					moves.push_back(Move(index, index__, 1, 0, enP, 0, 0));
+			}
+
+		}
 	};
 
 	void PawnMoves(const Board* board, int32_t index, std::vector<Move>& moves)
@@ -976,47 +1027,10 @@ namespace chs
 				moves.push_back(Move(index, possible[1], 0, 1, 0, 0, 0));
 		}
 
-		// side capture / en passant capture
-		auto side_capture = [&](int32_t side, int32_t& index__)
-		{
-			int32_t enPassant = 0;
-			if (position.Move(side, forward, index__))
-			{
-				bool valid = true;
-				if (board->tiles[index__])
-				{
-					if (!(IsWhite(board->tiles[index__]) ^ isWhite))
-						valid = false;
-				}
-				else if (board->enPassant == index__)
-				{
-					auto idx = EnPassantToPiece(board->enPassant);
-					if (!(IsWhite(board->tiles[idx]) ^ isWhite))
-						valid = false;
+		
 
-					enPassant = 1;
-				}
-				else
-					valid = false;
-
-				if (valid)
-				{
-					if (prom)
-					{
-						moves.push_back(Move(index, index__, 1, 0, 0, 0, BlackRook + isWhite));
-						moves.push_back(Move(index, index__, 1, 0, 0, 0, BlackKnight + isWhite));
-						moves.push_back(Move(index, index__, 1, 0, 0, 0, BlackBishop + isWhite));
-						moves.push_back(Move(index, index__, 1, 0, 0, 0, BlackQueen + isWhite));
-					}
-					else
-						moves.push_back(Move(index, index__, 1, 0, enPassant, 0, 0));
-				}
-
-			}
-		};
-
-		side_capture(1, possible[2]);
-		side_capture(-1, possible[3]);
+		side_capture(position, forward, board->tiles, board->enPassant, isWhite, prom, index, moves, 1, possible[2]);
+		side_capture(position, forward, board->tiles, board->enPassant, isWhite, prom, index, moves, -1, possible[3]);
 	}
 
 	void Slide(const Board* board, int32_t index, const glm::ivec2& direction, std::vector<Move>& moves)
@@ -1051,37 +1065,37 @@ namespace chs
 		Slide(board, index, glm::ivec2(0, -1), moves);
 	}
 
+	static void load_knight(const Position& position, const PieceType tiles[64], int32_t index, std::vector<Move>& moves, bool isWhite, const glm::ivec2& offs)
+	{
+		int32_t end_index = -1;
+		if (position.Move(offs.x, offs.y, end_index))
+		{
+			int32_t capture = 0;
+			if (tiles[end_index])
+			{
+				capture = 1;
+				if (!(IsWhite(tiles[end_index]) ^ isWhite))
+					return;
+			}
+			moves.push_back(Move(index, end_index, capture));
+		}
+	};
 
 	void KnightMoves(const Board* board, int32_t index, std::vector<Move>& moves)
 	{
 		Position position(index);
-		auto load_knight = [&](bool isWhite, const glm::ivec2& offs)
-		{
-			int32_t end_index = -1;
-			if (position.Move(offs.x, offs.y, end_index))
-			{
-				int32_t capture = 0;
-				if (board->tiles[end_index])
-				{
-					capture = 1;
-					if (!(IsWhite(board->tiles[end_index]) ^ isWhite))
-						return;
-				}
-				moves.push_back(Move(index, end_index, capture));
-			}
-		};
 
 		bool isWhite = IsWhite(board->tiles[index]);
 
-		load_knight(isWhite, glm::ivec2( 1,  2));
-		load_knight(isWhite, glm::ivec2( 1, -2));
-		load_knight(isWhite, glm::ivec2(-1,  2));
-		load_knight(isWhite, glm::ivec2(-1, -2));
+		load_knight(position, board->tiles, index, moves, isWhite, glm::ivec2( 1,  2));
+		load_knight(position, board->tiles, index, moves, isWhite, glm::ivec2( 1, -2));
+		load_knight(position, board->tiles, index, moves, isWhite, glm::ivec2(-1,  2));
+		load_knight(position, board->tiles, index, moves, isWhite, glm::ivec2(-1, -2));
 
-		load_knight(isWhite, glm::ivec2( 2, -1));
-		load_knight(isWhite, glm::ivec2( 2,  1));
-		load_knight(isWhite, glm::ivec2(-2, -1));
-		load_knight(isWhite, glm::ivec2(-2,  1));
+		load_knight(position, board->tiles, index, moves, isWhite, glm::ivec2( 2, -1));
+		load_knight(position, board->tiles, index, moves, isWhite, glm::ivec2( 2,  1));
+		load_knight(position, board->tiles, index, moves, isWhite, glm::ivec2(-2, -1));
+		load_knight(position, board->tiles, index, moves, isWhite, glm::ivec2(-2,  1));
 	}
 
 	void BishopMoves(const Board* board, int32_t index, std::vector<Move>& moves)
@@ -1104,74 +1118,112 @@ namespace chs
 		Slide(board, index, glm::ivec2(1,  -1), moves);
 	}
 
+	static void load_king(const Position& position, const PieceType tiles[64], int32_t index, std::vector<Move>& moves, bool isWhite, const glm::ivec2& offs)
+	{
+		int32_t end_index = -1;
+		if (position.Move(offs.x, offs.y, end_index))
+		{
+			int32_t capture = 0;
+			if (tiles[end_index])
+			{
+				capture = 1;
+				if (!(IsWhite(tiles[end_index]) ^ isWhite))
+					return;
+			}
+			moves.push_back(Move(index, end_index, capture));
+		}
+	};
+
+	static void check_castle(const Board* board, int32_t castlePermission, const PieceType tiles[64], int32_t index, std::vector<Move>& moves, bool queenside)
+	{
+		if (CanCastle(castlePermission, GetColor(tiles[index]), queenside))
+		{
+			int32_t dir_x = queenside ? -1 : 1;
+			int32_t x = dir_x;
+			int32_t king = index + (queenside ? -2 : 2);
+			static std::vector<int32_t> castle_tiles = { 1, 2 };
+			if (queenside)
+			{
+				castle_tiles[0] = index - 1;
+				castle_tiles[1] = index - 2;
+				// queen side a2 / h2 can be attacked for castling
+				// so check if it isn't empty
+				if (tiles[index - 3])
+					return;
+			}
+			else
+			{
+				castle_tiles[0] = index + 1;
+				castle_tiles[1] = index + 2;
+			}
+
+			for (auto tile : castle_tiles)
+			{
+				if (tiles[tile] || board->IsAttacked(tile, ~(GetColor(tiles[index])) & 1u))
+					return;
+			}
+
+
+			moves.push_back(Move(index, king, 0, 0, 0, 1, 0));
+		}
+	};
+
 	void KingMoves(const Board* board, int32_t index, std::vector<Move>& moves)
 	{
 		Position position(index);
-		auto load_king = [&](bool isWhite, const glm::ivec2& offs)
-		{
-			int32_t end_index = -1;
-			if (position.Move(offs.x, offs.y, end_index))
-			{
-				int32_t capture = 0;
-				if (board->tiles[end_index])
-				{
-					capture = 1;
-					if (!(IsWhite(board->tiles[end_index]) ^ isWhite))
-						return;
-				}
-				moves.push_back(Move(index, end_index, capture));
-			}
-		};
+		
 
 		bool isWhite = IsWhite(board->tiles[index]);
 
-		load_king(isWhite, glm::ivec2( 1,  0));
-		load_king(isWhite, glm::ivec2(-1,  0));
-		load_king(isWhite, glm::ivec2( 0,  1));
-		load_king(isWhite, glm::ivec2( 0, -1));
+		load_king(position, board->tiles, index, moves, isWhite, glm::ivec2( 1,  0));
+		load_king(position, board->tiles, index, moves, isWhite, glm::ivec2(-1,  0));
+		load_king(position, board->tiles, index, moves, isWhite, glm::ivec2( 0,  1));
+		load_king(position, board->tiles, index, moves, isWhite, glm::ivec2( 0, -1));
 
-		load_king(isWhite, glm::ivec2( 1, -1));
-		load_king(isWhite, glm::ivec2( 1,  1));
-		load_king(isWhite, glm::ivec2(-1, -1));
-		load_king(isWhite, glm::ivec2(-1,  1));
+		load_king(position, board->tiles, index, moves, isWhite, glm::ivec2( 1, -1));
+		load_king(position, board->tiles, index, moves, isWhite, glm::ivec2( 1,  1));
+		load_king(position, board->tiles, index, moves, isWhite, glm::ivec2(-1, -1));
+		load_king(position, board->tiles, index, moves, isWhite, glm::ivec2(-1,  1));
 
 		// castle
 		{
-			auto check_castle = [&](bool queenside)
-			{
-				if (CanCastle(board->castlePermission, GetColor(board->tiles[index]), queenside))
-				{
-					int32_t dir_x = queenside ? -1 : 1;
-					int32_t x = dir_x;
-					int32_t king = index + (queenside ? -2 : 2);
-					std::vector<int32_t> tiles;
-					if (queenside)
-					{
-						tiles = { index - 1, index - 2 };
-						// queen side a2 / h2 can be attacked for castling
-						// so check if it isn't empty
-						if (board->tiles[index - 3])
-							return;
-					}
-					else
-						tiles = { index + 1, index + 2 };
-
-					for (auto tile : tiles)
-					{
-						if (board->tiles[tile] || board->IsAttacked(tile, ~(GetColor(board->tiles[index])) & 1u))
-							return;
-					}
-
-
-					moves.push_back(Move(index, king, 0, 0, 0, 1, 0));
-				}
-			};
 
 			if (!board->IsAttacked(index, GetOppColorFromPiece(board->tiles[index])))
 			{
-				check_castle(true);
-				check_castle(false);
+				check_castle(board, board->castlePermission, board->tiles, index, moves, true);
+				check_castle(board, board->castlePermission, board->tiles, index, moves, false);
 			}
+		}
+	}
+
+	static void slide_check(const Position& position, int32_t tile_index, const PieceType tiles[64], bool& attacked, Color by, const glm::ivec2& direction, PieceType other)
+	{
+		auto copy_pos = position;
+		// check king
+		{
+			if (copy_pos.Move(direction.x, direction.y, tile_index))
+			{
+				if (tiles[tile_index])
+				{
+					if (((GetColor(tiles[tile_index]) == by)) &&
+						(SamePiece(tiles[tile_index], other) || IsQueen(tiles[tile_index]) || IsKing(tiles[tile_index])))
+						attacked = true;
+					return;
+				}
+				copy_pos.position += direction;
+			}
+		}
+
+		while (copy_pos.Move(direction.x, direction.y, tile_index))
+		{
+			if (tiles[tile_index])
+			{
+				if ((GetColor(tiles[tile_index]) == by) &&
+					(SamePiece(tiles[tile_index], other) || IsQueen(tiles[tile_index])))
+					attacked = true;
+				return;
+			}
+			copy_pos.position += direction;
 		}
 	}
 
@@ -1224,39 +1276,9 @@ namespace chs
 			}
 		}
 
-		bool attacked = false;
-		auto slide = [&](const glm::ivec2& direction, PieceType other)
-		{
-			auto copy_pos = position;
-			// check king
-			{
-				if (copy_pos.Move(direction.x, direction.y, tile_index))
-				{
-					if (tiles[tile_index])
-					{
-						if (((GetColor(tiles[tile_index]) == by)) && 
-							(SamePiece(tiles[tile_index], other) || IsQueen(tiles[tile_index]) || IsKing(tiles[tile_index])))
-								attacked = true;	
-						return;
-					}
-					copy_pos.position += direction;
-				}
-			}
+		bool attacked = false;		
 
-			while (copy_pos.Move(direction.x, direction.y, tile_index))
-			{
-				if (tiles[tile_index])
-				{
-					if ((GetColor(tiles[tile_index]) == by) &&
-						(SamePiece(tiles[tile_index], other) || IsQueen(tiles[tile_index])))
-						attacked = true;
-					return;
-				}
-				copy_pos.position += direction;
-			}
-		};
-
-#define check(x, y) slide(x, y); if (attacked) return true
+#define check(x, y) slide_check(position, tile_index, tiles, attacked, by, x, y); if (attacked) return true
 
 		check(glm::ivec2( 1,  0), WhiteRook);
 		check(glm::ivec2(-1,  0), WhiteRook);

@@ -17,7 +17,7 @@ namespace chs
 		memcpy_s(&v, sizeof(v), &vector, sizeof(vector));
 		return v;
 	}
-	static int32_t depth = 4;
+
 	void ChessLayer::OnAttach()
 	{
 		// renderpass
@@ -109,6 +109,7 @@ namespace chs
 		}
 		// initialize pipeline and framebuffer
 		Resize(800, 800);
+		PreComputeBoardHashes();
 
 		// starting positions 
 		board = et::CreateRef<Board>("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1");
@@ -187,6 +188,22 @@ namespace chs
 		ImGui::Text("%.4f", ImGui::GetIO().Framerate);
 		ImGui::End();
 #endif
+
+		ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
+		{
+			ImGui::Begin("Settings");
+			static char fen[256] = {};
+			ImGui::InputText("fen", fen, 256);
+			if (ImGui::Button("Load Fen"))
+			{
+				board = et::CreateRef<Board>(fen);
+				tileManager.board = board.get();
+			}
+			ImGui::End();
+		}
+		ImGui::PopFont();
+
+		// file and rank
 		{
 
 			{
@@ -220,6 +237,8 @@ namespace chs
 			}
 		}
 
+
+		// full moves and fifty moves
 		{
 			bool wide = viewport_size.x / viewport_size.y > 1.66f;
 			glm::vec2 fullmove_pos = tileManager.WorldPosToScreenPos(glm::vec2(-3.5f, 4.7f));
@@ -252,6 +271,8 @@ namespace chs
 		ImGui::PopStyleColor();
 	}
 
+	static bool perft = false;
+
 	void ChessLayer::OnEvent(et::Event& e)
 	{
 		et::EventDispatcher dispatcher(e);
@@ -279,7 +300,15 @@ namespace chs
 			{
 				bool control = et::Input::IsKeyDown(et::Key::LeftControl) || et::Input::IsKeyDown(et::Key::RightControl);
 				bool shift = et::Input::IsKeyDown(et::Key::LeftShift) || et::Input::IsKeyDown(et::Key::RightShift);
-				if (control)
+
+				if (perft)
+				{
+					perft = false;
+					int32_t depth = e.GetKeyCode() - et::Key::D0; 
+					if (depth > 0 && depth < 10)
+						this->board->PerftRoot(depth);
+				}
+				else if (control)
 				{
 					if (e.GetKeyCode() == et::Key::Z)
 						this->board->Undo();
@@ -293,9 +322,8 @@ namespace chs
 							ET_LOG_INFO("hash : 0x{:x}", this->board->GetHash());
 					}
 					else if (e.GetKeyCode() == et::Key::U)
-					{
-						this->board->PerftRoot(depth--);
-					}
+						perft = true;
+
 				}
 				
 				return false;

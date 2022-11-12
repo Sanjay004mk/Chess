@@ -4,7 +4,7 @@
 #include "pieces.h"
 
 #if defined(CHS_DEBUG)
-//#define CHS_MOVE_STORE_EXTRA_INFO
+#define CHS_MOVE_STORE_EXTRA_INFO
 #endif
 
 namespace chs
@@ -144,12 +144,25 @@ namespace chs
 #endif
 		}
 
+		bool IsPromoted() const { return (data2 & 0x08000000u); }
+		void IsPromoted(bool isPromoted)
+		{
+			// clear is promoted
+			data2 = (data2 & ~0x08000000u);
+			data2 |= ((isPromoted & 1u) << 27);
+
+#if defined(CHS_MOVE_STORE_EXTRA_INFO)
+			promoted = isPromoted;
+#endif
+		}
+
 		PieceType PromotedTo() const { return (PieceType)((data & 0x000f0000) >> 16); }
 		void PromotedTo(PieceType type)
 		{
 			// clear promoted to
 			data = (data & ~0x000f0000u);
 			data |= ((uint32_t)type << 16);
+			IsPromoted(type);
 
 #if defined(CHS_MOVE_STORE_EXTRA_INFO)
 			promotedTo = type;
@@ -236,7 +249,7 @@ namespace chs
 		*   ----  ----    ----  ----    --1-  ----    ----  ----  -> 'pawn start'       Mask: 0x00002000    Values: 0 / 1  ( set only on 2 long moves )
 		*   ----  ----    ----  ----    -1--  ----    ----  ----  -> 'castle'           Mask: 0x00004000    Vaules: 0 / 1
 		*   ----  ----    ----  ----    1---  ----    ----  ----  -> 'capture'          Mask: 0x00008000    Vaules: 0 / 1
-		*   ----  ----    ----  1111    ----  ----    ----  ----  -> 'promote'          Mask: 0x000f0000    Vaules: ( 0 - 12 )
+		*   ----  ----    ----  1111    ----  ----    ----  ----  -> 'promoted to'          Mask: 0x000f0000    Vaules: ( 0 - 12 )
 		*   ----  ----    1111  ----    ----  ----    ----  ----  -> 'captured type'    Mask: 0x00f00000    Vaules: ( 0 - 12 )  [used by undo]
 		*   1111  1111    ----  ----    ----  ----    ----  ----  -> 'fifty move'       Mask: 0xff000000    Vaules: ( 0 - 100 )  [used by undo]
 		* 
@@ -246,6 +259,7 @@ namespace chs
 		*   ----  ----    ----  ----    ----  ----    -111  1111  -> 'en passant tile'  Mask: 0x0000007f    Values: ( 0 - 64 ) 
 		*   ----  ----    ----  ----    ----  -111    1---  ----  -> 'castle perm'      Mask: 0x00000780    Values: ( 0 - 15 )
 		*   ----  -111    1111  1111    1111  1---    ----  ----  -> 'full moves'       Mask: 0x07fff800    Values: ( 1 - 65535 )
+		*   ----  1---    ----  ----    ----  ----    ----  ----  -> 'is promote'       Mask: 0x08000000    Values: ( 1 - 65535 )
 		*/
 
 #if defined(CHS_MOVE_STORE_EXTRA_INFO)
@@ -257,6 +271,7 @@ namespace chs
 		bool enp = false;
 		bool castlePerms[4] = {};
 		bool capture = false;
+		bool promoted = false;
 		PieceType promotedTo = 0;
 		PieceType capturedType = 0;
 		int32_t fifty = 0;
@@ -355,6 +370,8 @@ namespace chs
 		friend void QueenMoves(const Board* board, int32_t index, std::vector<Move>& moves);
 		friend void KingMoves(const Board* board, int32_t index, std::vector<Move>& moves);
 	};
+
+	void PreComputeBoardHashes();
 
 	inline void SetBit(uint64_t& bit_board, int32_t bit, int32_t position)
 	{
@@ -466,6 +483,7 @@ namespace chs
 		stream << "fifty moves: " << std::hex << board.fiftyMove << std::endl;
 		stream << "full moves: " << std::hex << board.fullMoves << std::endl;
 		stream << "hash: 0x" << std::hex << board.hashKey << std::endl;
+		stream << "fen: " << board.GetFEN() << std::endl;
 
 		return stream;
 	}
