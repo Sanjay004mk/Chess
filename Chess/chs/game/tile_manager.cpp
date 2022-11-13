@@ -158,6 +158,7 @@ namespace chs
 					board->MakeMove(moveTiles.at(pos), askPromotion);
 				}
 				moveTiles.clear();
+				clickedPiecePos = glm::vec2(0.f);
 			}
 
 			dragPiece = 0;

@@ -91,6 +91,7 @@ namespace chs
 	{
 		LoadFromFen(fen_string);
 		hashKey = hash();
+		playedMoves.reserve(2048);
 	}
 
 	void Board::LoadFromFen(std::string_view fen_string)
@@ -334,7 +335,7 @@ namespace chs
 					prom++;
 			}
 
-			Revert(move);
+			Revert();
 		}
 
 		return nodes;
@@ -377,7 +378,7 @@ namespace chs
 				
 				ET_LOG_INFO("{}{} : {}", IndexToStr(move.From()), IndexToStr(move.To()), temp);
 			}
-			Revert(move);
+			Revert();
 		}
 		ET_LOG_INFO("Nodes: {}", nodes);
 		ET_LOG_INFO("Captures: {}, EnPassant: {}, Castles: {}, Promotions: {}", captures, ep, castles, prom);
@@ -516,10 +517,12 @@ namespace chs
 	{
 		ET_DEBUG_ASSERT(move.Valid());
 
-		move.Fifty(fiftyMove);
-		move.Full(fullMoves);
-		move.EnPassantTile(enPassant);
-		move.CastlePerm(castlePermission);
+		MoveMetaData data;
+
+		data.Fifty(fiftyMove);
+		data.Full(fullMoves);
+		data.EnPassantTile(enPassant);
+		data.CastlePerm(castlePermission);
 
 		fiftyMove++;
 
@@ -536,7 +539,7 @@ namespace chs
 			if (!RemovePiece(cap_tile, &rem_piece))
 			{
 				// revert shoul fail
-				ET_DEBUG_ASSERT(!Revert(move));
+				ET_DEBUG_ASSERT(!Revert());
 				return false;
 			}
 
@@ -544,7 +547,7 @@ namespace chs
 			castlePermission &= castle_mask(move.To());
 
 			capturedTiles.push_back({ cap_tile, rem_piece });
-			move.CapturedType(rem_piece);
+			data.CapturedType(rem_piece);
 
 			materialScore[turn] = CalcMaterialScore(turn);
 		}
@@ -557,7 +560,7 @@ namespace chs
 			if (!ShiftPiece(rook_from, rook_to))
 			{
 				// revert shoul fail
-				ET_DEBUG_ASSERT(!Revert(move));
+				ET_DEBUG_ASSERT(!Revert());
 				return false;
 			}
 
@@ -577,7 +580,7 @@ namespace chs
 		if (!ShiftPiece(move.From(), move.To()))
 		{
 			// revert shoul fail
-			ET_DEBUG_ASSERT(!Revert(move));
+			ET_DEBUG_ASSERT(!Revert());
 			return false;
 		}
 
@@ -588,18 +591,19 @@ namespace chs
 			if (!RemovePiece(move.To()))
 			{
 				// revert shoul fail
-				ET_DEBUG_ASSERT(!Revert(move));
+				ET_DEBUG_ASSERT(!Revert());
 				return false;
 			}
 			if (!AddPiece(move.To(), move.PromotedTo()))
 			{
 				// revert shoul fail
-				ET_DEBUG_ASSERT(!Revert(move));
+				ET_DEBUG_ASSERT(!Revert());
 				return false;
 			}
 		}
 
 		poskeys.push_back(hashKey);
+		playedMoves.push_back({ move, data });
 		hashKey = hash();
 
 		ET_DEBUG_ASSERT(Valid());
@@ -607,14 +611,15 @@ namespace chs
 		return true;
 	}
 
-	bool Board::Revert(Move move)
+	bool Board::Revert()
 	{
+		auto [move, data] = playedMoves.back();
 		ET_DEBUG_ASSERT(move.Valid());
 
-		fiftyMove = move.Fifty();
-		fullMoves = move.Full();
-		enPassant = move.EnPassantTile();
-		castlePermission = move.CastlePerm();
+		fiftyMove = data.Fifty();
+		fullMoves = data.Full();
+		enPassant = data.EnPassantTile();
+		castlePermission = data.CastlePerm();
 		turn = GetOppColor(turn);
 
 		if (!ShiftPiece(move.To(), move.From()))
@@ -623,7 +628,8 @@ namespace chs
 		if (move.Capture())
 		{
 			auto cap_tile = move.EnPassant() ? EnPassantToPiece(enPassant) : move.To();
-			PieceType rem_piece = move.CapturedType();
+			PieceType rem_piece = data.CapturedType();
+			ET_DEBUG_ASSERT(rem_piece);
 			if (!AddPiece(cap_tile, rem_piece))
 				return false;
 
@@ -656,6 +662,7 @@ namespace chs
 
 		hashKey = poskeys.back();
 		poskeys.pop_back();
+		playedMoves.pop_back();
 
 		ET_DEBUG_ASSERT(Valid());
 
@@ -672,8 +679,6 @@ namespace chs
 			shouldPromote = true;
 		else
 			shouldPromote = false;
-
-		playedMoves.push_back(move);
 
 		// if king is attacked, check if that side has a valid moves that 
 		// results in the king not being attack ( IsInCheck() )
@@ -701,7 +706,7 @@ namespace chs
 		if (IsKing(piece) || !piece)
 			return false;
 
-		Move& move = playedMoves.back();
+		auto& [move, data] = playedMoves.back();
 		if (!move.IsPromoted())
 			return false;
 
@@ -746,10 +751,8 @@ namespace chs
 		if (playedMoves.empty())
 			return false;
 
-		if (!Revert(playedMoves.back()))
+		if (!Revert())
 			return false;
-
-		playedMoves.pop_back();
 
 		// reset checkmate
 		inCheck = checkmate = false;
@@ -770,11 +773,11 @@ namespace chs
 
 			if (!IsAttacked(pieces[BlackKing + c].positions[0], GetOppColor(c) ))
 			{
-				Revert(moves[i]);
+				Revert();
 				return false;
 			}
 
-			Revert(moves[i]);
+			Revert();
 		}
 
 		return true;
@@ -806,7 +809,7 @@ namespace chs
 				moves.erase(it);
 			}
 
-			Revert(move);
+			Revert();
 		}
 
 		// remove promotion moves to allow the player to select which piece to promote to
@@ -893,6 +896,23 @@ namespace chs
 		for (uint32_t i = 1 + turn; i < 13; i += 2)
 			score += scores[i] * pieces[i].count;
 
+		return score;
+	}
+
+	int32_t Board::Evaluate(Color side) const
+	{
+		int32_t score = materialScore[side] - materialScore[GetOppColor(side)];
+		for (uint32_t i = 1; i < 9; i ++)
+		{
+			for (uint32_t p = 0; p < pieces[i].count; p++)
+			{
+				if (GetColor(i) == side)
+					score += positionWeights[i][pieces[i].positions[p]];
+				else
+					score -= positionWeights[i][pieces[i].positions[p]];
+
+			}
+		}
 		return score;
 	}
 

@@ -423,7 +423,10 @@ namespace chs
 					else if (control)
 					{
 						if (e.GetKeyCode() == et::Key::Z)
+						{
+							this->tileManager.ClearTiles();
 							this->board->Undo();
+						}
 						else if (e.GetKeyCode() == et::Key::C)
 							ImGui::SetClipboardText(this->board->GetFEN().c_str());
 						else if (e.GetKeyCode() == et::Key::P)

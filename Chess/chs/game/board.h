@@ -9,7 +9,9 @@
 
 #include "move.h"
 
-#define MAX_DEPTH 8
+#define MAX_DEPTH 64
+// used for memory allocation while generating moves
+#define MAX_MOVES 256
 
 namespace chs
 {
@@ -31,9 +33,9 @@ namespace chs
 		PieceRenderInfo operator*() { return Deref(); }
 		const PieceRenderInfo operator*() const { return Deref(); }
 		PieceIterator& operator++() { Inc(); return *this; }
-		PieceIterator& operator++(int) { auto ret = *this; Inc(); return ret; }
+		PieceIterator operator++(int) { auto ret = *this; Inc(); return ret; }
 		PieceIterator& operator--() { Dec(); return *this; }
-		PieceIterator& operator--(int) { auto ret = *this; Dec(); return ret; }
+		PieceIterator operator--(int) { auto ret = *this; Dec(); return ret; }
 		operator bool() const { return Valid(); }
 		bool operator==(const PieceIterator& other) const { return index == other.index; }
 		bool operator!=(const PieceIterator& other) const {	return !(*this == other); }
@@ -94,10 +96,10 @@ namespace chs
 		size_t hash() const;
 		size_t GetHash() const { return hashKey; }
 
-		int32_t GetMaterialScore(Color side) const { 
-			ET_DEBUG_ASSERT(side < 2);
-			return materialScore[side]; 
-		}
+		int32_t GetMaterialScore(Color side) const { ET_DEBUG_ASSERT(side < 2); return materialScore[side]; }
+		int32_t Evaluate(Color side) const;
+
+		Move Search(int32_t depth);
 
 		std::string GetFEN() const;
 
@@ -108,6 +110,8 @@ namespace chs
 	private:
 		std::vector<Move> GetAllMoves(Color side);
 		void GetAllMoves(std::vector<Move>& moves, Color side);
+		void ResetForSearch();
+		int32_t AlphaBeta(int32_t alpha, int32_t beta, int32_t depth);
 
 		int32_t CalcMaterialScore(Color side) const;
 
@@ -116,14 +120,14 @@ namespace chs
 		bool RemovePiece(int32_t index, PieceType* piece = nullptr);
 		bool ShiftPiece(int32_t from, int32_t to, PieceType* piece = nullptr);
 		bool MovePiece(Move& move);
-		bool Revert(Move move);
+		bool Revert();
 		void LoadFromFen(std::string_view fen_string);
 		std::vector<Move> GetMoveTiles(int32_t position);
 
 		BoardSpecification specs;
 		PieceType tiles[64] = { 0 };		
 		std::vector<std::pair<int32_t, PieceType>> capturedTiles;
-		std::vector<Move> playedMoves;
+		std::vector<std::pair<Move, MoveMetaData>> playedMoves;
 		std::vector<size_t> poskeys;
 
 		// to be able to index from PieceType enum ( 0 = empty, ..., 12 = white king )
@@ -147,6 +151,9 @@ namespace chs
 		uint64_t pawnBitBoard[2] = { 0 };
 		uint64_t majorBitBoard[2] = { 0 };
 		uint64_t minorBitBoard[2] = { 0 };
+
+		// for move searching
+		std::array<Move, MAX_DEPTH> pv_moves;
 
 		template <typename ostream>
 		friend ostream& operator<<(ostream& stream, const Board& board);

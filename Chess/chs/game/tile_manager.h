@@ -17,6 +17,7 @@ namespace chs
 		void* GetProjection() { return &camera.projection; }
 		void DrawTiles();
 		void SetCamera(uint32_t viewportWidth, uint32_t viewportHeight);
+		void ClearTiles() { moveTiles.clear(); clickedPiecePos = glm::vec2(0.f); }
 
 		bool Promote(PieceType piece);
 
