@@ -54,6 +54,18 @@ namespace chs
 		std::array<int32_t, 10> positions = { -1 };
 	};
 
+	struct PieceWeight
+	{
+		PieceWeight(PieceType piece);
+
+		template <typename integer>
+		int32_t& operator[](integer i) { return weights[i]; }
+		template <typename integer>
+		const int32_t& operator[](integer i) const { return weights[i]; }
+
+		std::array<int32_t, 64> weights = {};
+	};
+
 	extern std::unordered_map<char, PieceType> CharToPiece;
 	extern std::unordered_map<PieceType, char> PieceToChar;
 	
@@ -61,6 +73,8 @@ namespace chs
 	extern bool IsMinor[13];
 
 	extern int32_t scores[13];
+
+	extern PieceWeight positionWeights[13];
 
 	inline Color GetColor(PieceType piece)
 	{

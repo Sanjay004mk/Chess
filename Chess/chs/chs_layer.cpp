@@ -378,15 +378,7 @@ namespace chs
 		if (board)
 			DisplayBoardUI();
 		else
-			DisplayMainMenu();
-
-#if defined(CHS_DEBUG)
-		ImGui::SetNextWindowPos(viewport_pos);
-		ImGui::Begin("fps", nullptr, window_flags);
-		ImGui::Text("%.4f", ImGui::GetIO().Framerate);
-		ImGui::End();
-#endif
-		
+			DisplayMainMenu();		
 	}
 
 	static bool perft = false;
