@@ -32,4 +32,13 @@ namespace chs
 
 		return true;
 	}
+
+	std::ostream& operator<<(std::ostream& stream, const Move& move)
+	{
+		stream << "Move: [ " << "from: " << IndexToStr(move.From()) << ", to: " << IndexToStr(move.To()) << ", en passant: " << move.EnPassant();
+		stream << ", castle: " << move.Castle() << ", capture: " << move.Capture();
+		move.Valid() ? stream << " (Valid)" : stream << " (Invalid)";
+		stream << " ]";
+		return stream;
+	}
 }

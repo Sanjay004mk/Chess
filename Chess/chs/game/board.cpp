@@ -92,6 +92,7 @@ namespace chs
 		LoadFromFen(fen_string);
 		hashKey = hash();
 		playedMoves.reserve(2048);
+		CalcMaterialScores();
 	}
 
 	void Board::LoadFromFen(std::string_view fen_string)
@@ -517,6 +518,12 @@ namespace chs
 	{
 		ET_DEBUG_ASSERT(move.Valid());
 
+#define MOVE_FAIL fiftyMove = data.Fifty();\
+				  fullMoves = data.Full();\
+				  enPassant = data.EnPassantTile();\
+				  castlePermission = data.CastlePerm();\
+				  turn = GetOppColor(turn)
+
 		MoveMetaData data;
 
 		data.Fifty(fiftyMove);
@@ -538,8 +545,7 @@ namespace chs
 			PieceType rem_piece = 0;
 			if (!RemovePiece(cap_tile, &rem_piece))
 			{
-				// revert shoul fail
-				ET_DEBUG_ASSERT(!Revert());
+				MOVE_FAIL;
 				return false;
 			}
 
@@ -548,8 +554,6 @@ namespace chs
 
 			capturedTiles.push_back({ cap_tile, rem_piece });
 			data.CapturedType(rem_piece);
-
-			materialScore[turn] = CalcMaterialScore(turn);
 		}
 		else if (move.Castle())
 		{
@@ -559,8 +563,7 @@ namespace chs
 			int32_t rook_to = move.To() + (queenSide ? 1 : -1);
 			if (!ShiftPiece(rook_from, rook_to))
 			{
-				// revert shoul fail
-				ET_DEBUG_ASSERT(!Revert());
+				MOVE_FAIL;
 				return false;
 			}
 
@@ -579,8 +582,7 @@ namespace chs
 
 		if (!ShiftPiece(move.From(), move.To()))
 		{
-			// revert shoul fail
-			ET_DEBUG_ASSERT(!Revert());
+			MOVE_FAIL;
 			return false;
 		}
 
@@ -590,14 +592,12 @@ namespace chs
 
 			if (!RemovePiece(move.To()))
 			{
-				// revert shoul fail
-				ET_DEBUG_ASSERT(!Revert());
+				MOVE_FAIL;
 				return false;
 			}
 			if (!AddPiece(move.To(), move.PromotedTo()))
 			{
-				// revert shoul fail
-				ET_DEBUG_ASSERT(!Revert());
+				MOVE_FAIL;
 				return false;
 			}
 		}
@@ -605,6 +605,7 @@ namespace chs
 		poskeys.push_back(hashKey);
 		playedMoves.push_back({ move, data });
 		hashKey = hash();
+		CalcMaterialScores();
 
 		ET_DEBUG_ASSERT(Valid());
 
@@ -637,8 +638,6 @@ namespace chs
 			auto it = std::find(capturedTiles.begin(), capturedTiles.end(), t);
 			ET_DEBUG_ASSERT(it != capturedTiles.end());
 			capturedTiles.erase(it);
-
-			materialScore[GetOppColor(turn)] = CalcMaterialScore(GetOppColor(turn));
 		}
 		else if (move.Castle())
 		{
@@ -663,6 +662,7 @@ namespace chs
 		hashKey = poskeys.back();
 		poskeys.pop_back();
 		playedMoves.pop_back();
+		CalcMaterialScores();
 
 		ET_DEBUG_ASSERT(Valid());
 
@@ -680,23 +680,7 @@ namespace chs
 		else
 			shouldPromote = false;
 
-		// if king is attacked, check if that side has a valid moves that 
-		// results in the king not being attack ( IsInCheck() )
-		if (inCheck = IsAttacked(pieces[BlackKing + turn].positions[0], GetOppColor(turn)))
-		{
-			if (IsInCheck(turn))
-			{
-				auto win_str = turn ? "Black wins" : "White wins";
-				ET_LOG_INFO("CHECKMATE! {}", win_str);
-				checkmate = true;
-			}
-			else
-				ET_LOG_INFO("CHECKMATE!");
-		}
-		else
-		{
-			inCheck = checkmate = false;
-		}
+		UpdateCheckmate();
 
 		return true;
 	}
@@ -721,26 +705,11 @@ namespace chs
 
 		move.PromotedTo(piece);
 
-		poskeys.back() = hashKey = hash();
+		hashKey = hash();
 
-		// if king is attacked, check if that side has a valid moves that 
-		// results in the king not being attack ( IsInCheck() )
-		if (inCheck = IsAttacked(pieces[BlackKing + turn].positions[0], GetOppColor(turn)))
-		{
-			if (IsInCheck(turn))
-			{
-				auto win_str = turn ? "Black wins" : "White wins";
-				ET_LOG_INFO("CHECKMATE! {}", win_str);
-				checkmate = true;
-			}
-			else
-				ET_LOG_INFO("CHECKMATE!");
-		}
-		else
-		{
-			inCheck = checkmate = false;
-		}
+		UpdateCheckmate();
 
+		CalcMaterialScores();
 		ET_DEBUG_ASSERT(Valid());
 
 		return true;
@@ -758,6 +727,27 @@ namespace chs
 		inCheck = checkmate = false;
 
 		return true;
+	}
+
+	void Board::UpdateCheckmate()
+	{
+		// if king is attacked, check if that side has a valid moves that 
+		// results in the king not being attack ( IsInCheck() )
+		if (inCheck = IsAttacked(pieces[BlackKing + turn].positions[0], GetOppColor(turn)))
+		{
+			if (IsInCheck(turn))
+			{
+				auto win_str = turn ? "Black wins" : "White wins";
+				ET_LOG_INFO("CHECKMATE! {}", win_str);
+				checkmate = true;
+			}
+			else
+				ET_LOG_INFO("CHECKMATE!");
+		}
+		else
+		{
+			inCheck = checkmate = false;
+		}
 	}
 
 	bool Board::IsInCheck(Color c)
@@ -864,6 +854,43 @@ namespace chs
 		}
 	}
 
+	std::vector<Move> Board::GetAllLegalMoves(Color side)
+	{
+		std::vector<Move> moves;
+		moves.reserve(256);
+		GetAllLegalMoves(moves, side);
+		return moves;
+	}
+
+	void Board::GetAllLegalMoves(std::vector<Move>& moves, Color side)
+	{
+		GetAllMoves(moves, side);
+		// check if move results in current side ending up in check
+		static std::array<Move, 256> copy = {};
+		ET_DEBUG_ASSERT(moves.size() <= 256);
+		memset(copy.data(), 0, sizeof(copy));
+		memcpy_s(copy.data(), sizeof(Move) * moves.size(), moves.data(), sizeof(Move) * moves.size());
+		for (auto& move : copy)
+		{
+			// iterating over array so break when we reach end of memcpy
+			if (!move.data)
+				break;
+
+			auto c_move = move;
+			MovePiece(move);
+
+			// move results in player exposing king to check
+			if (IsAttacked(pieces[BlackKing + side].positions[0], GetOppColor(side)))
+			{
+				auto it = std::find(moves.begin(), moves.end(), c_move);
+				ET_DEBUG_ASSERT(it != moves.end());
+				moves.erase(it);
+			}
+
+			Revert();
+		}
+	}
+
 	PieceType Board::GetTile(const glm::vec2& tile)
 	{
 		if (!InsideBoard(tile))
@@ -890,13 +917,11 @@ namespace chs
 		return tiles[index];
 	}
 
-	int32_t Board::CalcMaterialScore(Color side) const
+	void Board::CalcMaterialScores()
 	{
-		int32_t score = 0;
-		for (uint32_t i = 1 + turn; i < 13; i += 2)
-			score += scores[i] * pieces[i].count;
-
-		return score;
+		materialScore[0] = materialScore[1] = 0;
+		for (uint32_t i = 1; i < 13; i ++)
+			materialScore[i % 2] += scores[i] * pieces[i].count;
 	}
 
 	int32_t Board::Evaluate(Color side) const
@@ -914,6 +939,118 @@ namespace chs
 			}
 		}
 		return score;
+	}
+
+	int32_t Board::GetPvLine(int32_t depth)
+	{
+		ET_DEBUG_ASSERT(depth < MAX_DEPTH);
+		Move move;
+		int32_t count = 0;
+		while (count < depth && pv_table.count(hashKey))
+		{
+			move = pv_table[hashKey];
+			if (MovePiece(move))
+				pv_moves[count++] = move;
+			else
+				break;
+		}
+
+		for (int32_t i = 0; i < count; i++)
+			Revert();
+
+		return count;
+	}
+
+	void Board::PrintPvLine(int32_t count) const
+	{
+		ET_LOG_INFO("PV");
+		for (int32_t i = 0; i < count; i++)
+			ET_LOG_INFO("\t{}", (Move)pv_moves[i]);
+	}
+
+	void Board::ResetForSearch()
+	{
+		pv_table.clear();
+		pv_moves.fill(Move());
+	}
+
+	int32_t Board::AlphaBeta(int32_t alpha, int32_t beta, int32_t depth, std::vector<std::vector<Move>>& moves)
+	{
+		ET_DEBUG_ASSERT(Valid());
+
+		if (depth <= 0)
+			return Evaluate(turn);
+
+		if (IsRepeated() || fiftyMove >= 100)
+			return 0;
+
+		moves[depth - 1].clear();
+		GetAllLegalMoves(moves[depth - 1], turn);
+
+		bool legal = false;
+		Move bestMove;
+		int32_t old_alpha = alpha;
+		int32_t score = -INF;
+
+		for (auto move : moves[depth - 1])
+		{
+			if (!MovePiece(move))
+				continue;
+
+			legal = true;
+			score = -AlphaBeta(-beta, -alpha, depth - 1, moves);
+			Revert();
+
+			if (score > alpha)
+			{
+				if (score >= beta)
+					return beta;
+				alpha = score;
+				bestMove = move;
+			}
+		}
+
+		if (!legal)
+		{
+			if (IsAttacked(pieces[BlackKing + turn].positions[0], turn))
+				return -CHECKMATESCORE;
+
+			return 0;
+		}
+
+		if (alpha != old_alpha)
+			pv_table[hashKey] = bestMove;
+
+		return alpha;
+
+	}
+
+	Move Board::Search(int32_t depth)
+	{
+		ET_DEBUG_ASSERT(depth < MAX_DEPTH);
+		et::Timer t;
+		Move bestMove;
+		int32_t bestScore = -INF;
+
+		ResetForSearch();
+
+		std::vector<std::vector<Move>> moves(depth);
+		for (auto& v : moves)
+			v.reserve(256);
+
+		for (int32_t c_depth = 1; c_depth <= depth; c_depth++)
+		{
+			bestScore = AlphaBeta(-INF, INF, c_depth, moves);
+
+			auto i = GetPvLine(c_depth);
+			bestMove = pv_moves[0];
+			ET_LOG_INFO("Depth: {} -Nodes-: {} Score: {} {}", c_depth, -1, bestScore, (Move)bestMove);
+			PrintPvLine(i);
+			/*if (t.Elapsed() >= SEARCH_TIMEOUT)
+				break;*/
+		}
+
+		return bestMove;
 	}
 
 	static constexpr size_t num_tile_hashes = 63 | (15 << 6);

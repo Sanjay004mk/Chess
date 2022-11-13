@@ -1,4 +1,5 @@
 #pragma once
+#include <iostream>
 
 #include "pieces.h"
 
@@ -123,10 +124,8 @@ namespace chs
 #endif
 		}
 
-		bool operator==(const Move& other) const
-		{
-			return data == other.data;
-		}
+		bool operator==(const Move& other) const { return data == other.data; }
+		bool operator!=(const Move& other) const { return data != other.data; }
 
 		uint32_t data = 0;
 		/*
@@ -153,8 +152,7 @@ namespace chs
 		PieceType promotedTo = 0;
 #endif
 
-		template <typename ostream>
-		friend ostream& operator<<(ostream& stream, const Move& move);
+		friend std::ostream& operator<<(std::ostream& stream, const Move& move);
 	};
 
 	struct MoveMetaData
@@ -245,16 +243,6 @@ namespace chs
 		PieceType capturedType = 0;
 #endif
 	};
-
-	template <typename ostream>
-	ostream& operator<<(ostream& stream, const Move& move)
-	{
-		stream << "Move: [ " << "from: " << IndexToStr(move.From()) << ", to: " << IndexToStr(move.To()) << ", en passant: " << move.EnPassant();
-		stream << ", castle: " << move.Castle() << ", capture: " << move.Capture();
-		move.Valid() ? stream << " (Valid)" : stream << " (Invalid)";
-		stream << " ]";
-		return stream;
-	}
 }
 
 namespace std

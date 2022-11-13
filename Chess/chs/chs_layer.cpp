@@ -422,24 +422,46 @@ namespace chs
 					}
 					else if (control)
 					{
-						if (e.GetKeyCode() == et::Key::Z)
+						switch (e.GetKeyCode())
+						{
+						case et::Key::Z:
 						{
 							this->tileManager.ClearTiles();
 							this->board->Undo();
+							break;
 						}
-						else if (e.GetKeyCode() == et::Key::C)
+						case et::Key::C:
+						{
 							ImGui::SetClipboardText(this->board->GetFEN().c_str());
-						else if (e.GetKeyCode() == et::Key::P)
+							break;
+						}
+						case et::Key::P:
 						{
 							if (shift)
 								ET_LOG_INFO("{}", *board);
 							else
 								ET_LOG_INFO("hash: 0x{:x}", this->board->GetHash());
+							break;
 						}
-						else if (e.GetKeyCode() == et::Key::U)
+						case et::Key::U:
+						{
 							perft = true;
-						else if (e.GetKeyCode() == et::Key::N)
+							break;
+						}
+						case et::Key::N:
+						{
 							StartNewGame();
+							break;
+						}
+						case et::Key::H:
+						{
+							auto move = this->board->Search(SEARCH_DEPTH);
+							ET_DEBUG_ASSERT(move.Valid());
+							this->board->MovePiece(move);
+							this->board->UpdateCheckmate();
+							break;
+						}
+						}
 					}
 				}
 

@@ -13,6 +13,11 @@
 // used for memory allocation while generating moves
 #define MAX_MOVES 256
 
+#define SEARCH_TIMEOUT 5.f
+#define SEARCH_DEPTH 3
+#define CHECKMATESCORE 29000
+#define INF 30000
+
 namespace chs
 {
 	class Board;
@@ -74,6 +79,7 @@ namespace chs
 		bool MakeMove(Move move, bool& shouldPromote);
 		bool Promote(PieceType piece);
 		bool Undo();
+		void UpdateCheckmate();
 		bool Valid() const;
 
 		PieceType GetTile(const glm::vec2& tile);
@@ -107,13 +113,19 @@ namespace chs
 			std::vector<std::vector<Move>>& depth_moves, int32_t depth = 6);
 		void PerftRoot(int32_t depth);
 
+		void PrintPvLine(int32_t count) const;
+
 	private:
 		std::vector<Move> GetAllMoves(Color side);
 		void GetAllMoves(std::vector<Move>& moves, Color side);
-		void ResetForSearch();
-		int32_t AlphaBeta(int32_t alpha, int32_t beta, int32_t depth);
+		std::vector<Move> GetAllLegalMoves(Color side);
+		void GetAllLegalMoves(std::vector<Move>& moves, Color side);
 
-		int32_t CalcMaterialScore(Color side) const;
+		void ResetForSearch();
+		int32_t GetPvLine(int32_t depth);
+		int32_t AlphaBeta(int32_t alpha, int32_t beta, int32_t depth, std::vector<std::vector<Move>>& moves);
+
+		void CalcMaterialScores();
 
 		bool IsInCheck(Color side);
 		bool AddPiece(int32_t index, PieceType piece);
@@ -143,7 +155,7 @@ namespace chs
 		bool inCheck = false;
 		bool checkmate = false;
 
-		int32_t materialScore[2];
+		int32_t materialScore[2] = {};
 
 		size_t hashKey = 0;
 
@@ -154,11 +166,13 @@ namespace chs
 
 		// for move searching
 		std::array<Move, MAX_DEPTH> pv_moves;
+		std::unordered_map<size_t, Move> pv_table;
 
 		template <typename ostream>
 		friend ostream& operator<<(ostream& stream, const Board& board);
 
 		friend struct PieceIterator;
+		friend class ChessLayer;
 
 		friend void Slide(const Board* board, int32_t index, const glm::ivec2& direction, std::vector<Move>& moves);
 		friend void PawnMoves(const Board* board, int32_t index, std::vector<Move>& moves);
