@@ -53,7 +53,11 @@ namespace et
 		{
 			Timer t;
 			TimeStep ts = mLastTime;
-			Time::sDelta = mLastTime;
+
+			if (ts > 1.f)
+				ts = TimeStep(0.1666f);
+
+			Time::sDelta = ts;
 
 			if (!mMinimized)
 			{

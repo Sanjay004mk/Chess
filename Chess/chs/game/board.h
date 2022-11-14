@@ -247,4 +247,19 @@ namespace chs
 	{
 		return (piece < 32) ? piece - 8 : piece + 8;
 	}
+
+	inline std::pair<glm::vec2, glm::vec2> GetCastleTiles(Move move)
+	{
+		int32_t to = move.To();
+		if (to == 2)       // c1
+			return { glm::vec2(1.f), glm::vec2(4.f, 1.f) };
+		else if (to == 6)  // g1
+			return { glm::vec2(8.f, 1.f), glm::vec2(6.f, 1.f) };
+		else if (to == 58) // c8
+			return { glm::vec2(1.f, 8.f), glm::vec2(4.f, 8.f) };
+		else if (to == 62) // g8
+			return { glm::vec2(8.f), glm::vec2(6.f, 8.f) };
+
+		return {};
+	}
 }

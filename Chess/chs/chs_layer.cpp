@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include "chs_layer.h"
+#include "game/animator.h"
 #include "Entropy/Entropy.h"
 
 #define CHS_INCLUDE_SHADER_STR
@@ -134,6 +135,7 @@ namespace chs
 
 	void ChessLayer::OnUpdate(et::TimeStep ts)
 	{
+		Animator::OnUpdate(ts);
 		tileManager.OnUpdate(ts);
 
 		defaultShader->SetUniform("proj", tileManager.GetProjection());
@@ -432,6 +434,7 @@ namespace chs
 							this->board->MovePiece(move);
 							this->board->UpdateCheckmate();
 							this->tileManager.UpdateFromTo(GetPositionFromIndex(move.From()), GetPositionFromIndex(move.To()));
+							this->tileManager.PlayAnimation(move);
 						}
 					}
 					else if (control)

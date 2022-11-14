@@ -1,6 +1,7 @@
 #include "Entropy/Entropy.h"
 
 #include "board.h"
+#include "animator.h"
 #include "tile_manager.h"
 
 #define MOVE_TILE_TEXTURE_INDEX 0
@@ -69,7 +70,7 @@ namespace chs
 		{
 			Animate();
 			q.color = glm::vec3(1.f);
-			for (auto piece : pieces)
+			for (auto& piece : pieces)
 			{
 				if (piece.position == clickedPos && dragPiece)
 					continue;
@@ -124,7 +125,29 @@ namespace chs
 		auto& b = *board;
 		pieces.clear();
 		for (auto piece : b)
+		{
 			pieces.push_back(piece);
+			// piece is animated
+			if (pieceAnimations.count(piece.position))
+				if (!Animator::Animate(pieces.back().position, pieceAnimations.at(piece.position)))
+					pieceAnimations.erase(piece.position);
+		}
+	}
+
+	void TileManager::PlayAnimation(Move move)
+	{
+		PlayAnimation(GetPositionFromIndex(move.From()), GetPositionFromIndex(move.To()));
+		if (move.Castle())
+		{
+			auto [from, to] = GetCastleTiles(move);
+			PlayAnimation(from, to);
+		}
+	}
+
+	void TileManager::PlayAnimation(const glm::vec2& from, const glm::vec2& to)
+	{
+		//   use 'to' because piece has already moved
+		pieceAnimations[to] = Animator::Play(AnimationInfo(from, to, 0.3f));
 	}
 
 	void TileManager::SetCamera(uint32_t viewportWidth, uint32_t viewportHeight)
@@ -181,7 +204,12 @@ namespace chs
 				{
 					auto& move = moveTiles.at(pos);
 					if (board->MakeMove(move, askPromotion))
+					{
 						UpdateFromTo(GetPositionFromIndex(move.From()), GetPositionFromIndex(move.To()));
+						// piece wasn't dragged
+						if (shouldMove)
+							PlayAnimation(move);
+					}
 				}
 				moveTiles.clear();
 				clickedPiecePos = glm::vec2(0.f);
