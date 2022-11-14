@@ -52,16 +52,17 @@ namespace chs
 
 			animation.currentFrame += ((float)animation.fps * ts);
 			if ((uint32_t)animation.currentFrame >= animation.keyFrames.back().frame)
-			{
 				animation.animating = false;
-			}
 
 			auto& [frame0, frame1] = animation.find((uint32_t)animation.currentFrame);
 			float one = (float)(frame1.frame - frame0.frame);
 			if (one == 0.f)
-				one = 1.f;
-			float t = (float)(animation.currentFrame - frame0.frame) / one;
-			animation.currentFrameOffset = Lerp(frame1.position, frame0.position, t);
+				animation.currentFrameOffset = frame1.position;
+			else	
+			{
+				float t = (float)(animation.currentFrame - frame0.frame) / one;
+				animation.currentFrameOffset = Lerp(frame1.position, frame0.position, t);
+			}
 		}
 	}
 

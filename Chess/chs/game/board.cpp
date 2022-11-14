@@ -1193,8 +1193,6 @@ namespace chs
 
 			auto i = GetPvLine(c_depth);
 			bestMove = pv_moves[0];
-			if (bestScore > (CHECKMATESCORE - c_depth))
-				ET_LOG_INFO("CHECKMATE MOVE");
 			ET_LOG_INFO("Depth: {} Nodes: {} Score: {} Ordering: {} Move: {}", c_depth, info.nodes, bestScore, info.fhf / info.fh, (Move)bestMove);
 			PrintPvLine(i);
 			/*if (t.Elapsed() >= SEARCH_TIMEOUT)

@@ -147,7 +147,7 @@ namespace chs
 	void TileManager::PlayAnimation(const glm::vec2& from, const glm::vec2& to)
 	{
 		//   use 'to' because piece has already moved
-		pieceAnimations[to] = Animator::Play(AnimationInfo(from, to, 0.3f));
+		pieceAnimations[to] = Animator::Play(AnimationInfo(from, to, 0.4f));
 	}
 
 	void TileManager::SetCamera(uint32_t viewportWidth, uint32_t viewportHeight)

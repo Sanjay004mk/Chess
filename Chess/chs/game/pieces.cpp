@@ -86,6 +86,8 @@ namespace chs
 		false,
 	};
 
+	// scores taken from https://youtube.com/playlist?list=PLZ1QII7yudbc-Ky058TEaOstZHVbT-2hg
+
 	extern int32_t scores[13] =
 	{
 		0,     // empty

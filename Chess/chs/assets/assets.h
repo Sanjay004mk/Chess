@@ -1,4 +1,7 @@
 #pragma once
+
+// all assets for chess pieces downloaded from https://commons.wikimedia.org/wiki/File:Chess_Pieces_Sprite.svg
+
 extern const uint8_t DATA_BLACK_PAWN[];
 extern const uint8_t DATA_BLACK_ROOK[];
 extern const uint8_t DATA_BLACK_KNIGHT[];
