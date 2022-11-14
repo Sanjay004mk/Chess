@@ -6,6 +6,7 @@ namespace chs
 {
 	class Board;
 	struct Move;
+	struct PieceRenderInfo;
 
 	class TileManager
 	{
@@ -18,6 +19,7 @@ namespace chs
 		void DrawTiles();
 		void SetCamera(uint32_t viewportWidth, uint32_t viewportHeight);
 		void ClearTiles() { moveTiles.clear(); clickedPiecePos = glm::vec2(0.f); }
+		void UpdateFromTo(const glm::vec2& from, const glm::vec2& to) { lastFrom = from; lastTo = to; }
 
 		bool Promote(PieceType piece);
 
@@ -29,6 +31,10 @@ namespace chs
 		Board* board;
 
 	private:
+		void Animate();
+
+		std::vector<PieceRenderInfo> pieces;
+		glm::vec2 lastFrom = {}, lastTo = {};
 
 		float screenWidth, screenHeight;
 		et::OrthographicCamera camera;

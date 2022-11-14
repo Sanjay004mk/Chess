@@ -45,15 +45,31 @@ namespace chs
 
 				et::Renderer::DrawQuad(q);
 			}
+			// highlight last played move
+			{
+				q.color = glm::vec3(0.95f, 0.929f, 0.893f);
+				if (InsideBoard(lastFrom))
+				{
+					q.position = lastFrom - glm::vec2(4.5f);
+					et::Renderer::DrawQuad(q);
+				}
+				if (InsideBoard(lastTo))
+				{
+					q.position = lastTo - glm::vec2(4.5f);
+					et::Renderer::DrawQuad(q);
+				}
+
+			}
 			q.size = glm::vec2(1.f);
 		}
+
 
 		// pieces
 		if (board)
 		{
+			Animate();
 			q.color = glm::vec3(1.f);
-			auto& b = *board;
-			for (auto piece : b)
+			for (auto piece : pieces)
 			{
 				if (piece.position == clickedPos && dragPiece)
 					continue;
@@ -70,7 +86,7 @@ namespace chs
 			q.size = glm::vec2(0.5f);
 			glm::vec2 blackPos = glm::vec2(4.25f, -3.75f);
 			glm::vec2 whitePos = glm::vec2(4.25f, 3.75f);
-			for (const auto& [index, type] : b.CapturedPieces())
+			for (const auto& [index, type] : board->CapturedPieces())
 			{
 				if (IsWhite(type))
 				{
@@ -101,6 +117,14 @@ namespace chs
 			}
 			q.size = glm::vec2(1.f);
 		}
+	}
+
+	void TileManager::Animate()
+	{
+		auto& b = *board;
+		pieces.clear();
+		for (auto piece : b)
+			pieces.push_back(piece);
 	}
 
 	void TileManager::SetCamera(uint32_t viewportWidth, uint32_t viewportHeight)
@@ -155,7 +179,9 @@ namespace chs
 			{
 				if (moveTiles.count(pos) != 0)
 				{
-					board->MakeMove(moveTiles.at(pos), askPromotion);
+					auto& move = moveTiles.at(pos);
+					if (board->MakeMove(move, askPromotion))
+						UpdateFromTo(GetPositionFromIndex(move.From()), GetPositionFromIndex(move.To()));
 				}
 				moveTiles.clear();
 				clickedPiecePos = glm::vec2(0.f);

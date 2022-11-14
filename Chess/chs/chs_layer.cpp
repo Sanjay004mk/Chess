@@ -431,6 +431,7 @@ namespace chs
 							ET_DEBUG_ASSERT(move.Valid());
 							this->board->MovePiece(move);
 							this->board->UpdateCheckmate();
+							this->tileManager.UpdateFromTo(GetPositionFromIndex(move.From()), GetPositionFromIndex(move.To()));
 						}
 					}
 					else if (control)
@@ -441,6 +442,13 @@ namespace chs
 						{
 							this->tileManager.ClearTiles();
 							this->board->Undo();
+							if (!this->board->playedMoves.empty())
+							{
+								auto [move, d] = this->board->playedMoves.back();
+								this->tileManager.UpdateFromTo(GetPositionFromIndex(move.From()), GetPositionFromIndex(move.To()));
+							}
+							else
+								this->tileManager.UpdateFromTo({}, {});
 							break;
 						}
 						case et::Key::C:
