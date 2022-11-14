@@ -192,6 +192,7 @@ namespace chs
 	}
 
 	extern bool askPromotion = false;
+	extern bool moveMade = false;
 
 	void TileManager::OnMouseRelease(const glm::vec2& mousePos)
 	{
@@ -205,6 +206,7 @@ namespace chs
 					auto& move = moveTiles.at(pos);
 					if (board->MakeMove(move, askPromotion))
 					{
+						moveMade = true;
 						UpdateFromTo(GetPositionFromIndex(move.From()), GetPositionFromIndex(move.To()));
 						// piece wasn't dragged
 						if (shouldMove)

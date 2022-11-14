@@ -23,10 +23,17 @@ namespace chs
 		void Resize(uint32_t newWidth, uint32_t newHeight);
 		void DisplayBoardUI();
 		void DisplayMainMenu();
+		void DisplayVsPlayerMenu();
+		void DisplayVsCompMenu();
+		void DisplayLevelSelectMenu();
+		void DisplayHomeButton();
+		void PlayEngineMove();
 
 		uint32_t width = 0, height = 0;
 
-		bool inMainMenu = true;
+		enum class MenuState { MainMenu, VsComputer, VsPlayer, LevelSelect, InGame };
+		MenuState menuState = MenuState::MainMenu;
+		BoardSpecification boardCreateSpecs;
 
 		TileManager tileManager;
 		et::Ref<Board> board;

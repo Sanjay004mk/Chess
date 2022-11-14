@@ -78,10 +78,14 @@ namespace chs
 		bool stopped = false;
 	};
 
+	enum class MatchType { VsPlayer, VsComputer };
+
 	// used for vs Player / vs Computer
 	struct BoardSpecification
 	{
 		Color player[2] = { White, Black };
+		MatchType type = MatchType::VsComputer;
+		float difficulty = 1.f;
 	};
 
 	class Board
@@ -129,6 +133,8 @@ namespace chs
 
 		void PrintPvLine(int32_t count) const;
 
+		const BoardSpecification specs;
+
 	private:
 		MoveList GetAllMoves(Color side);
 		void GetAllMoves(MoveList& moves, Color side);
@@ -155,7 +161,6 @@ namespace chs
 		void LoadFromFen(std::string_view fen_string);
 		MoveList GetMoveTiles(int32_t position);
 
-		BoardSpecification specs;
 		PieceType tiles[64] = { 0 };		
 		std::vector<std::pair<int32_t, PieceType>> capturedTiles;
 		std::vector<std::pair<Move, MoveMetaData>> playedMoves;

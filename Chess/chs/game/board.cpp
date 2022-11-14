@@ -1161,7 +1161,7 @@ namespace chs
 
 		if (!legal)
 		{
-			if (IsAttacked(pieces[BlackKing + turn].positions[0], turn))
+			if (IsAttacked(pieces[BlackKing + turn].positions[0], GetOppColor(turn)))
 				return -CHECKMATESCORE + ply;
 
 			return 0;
@@ -1182,7 +1182,7 @@ namespace chs
 		int32_t bestScore = -INF;
 
 		ResetForSearch();
-		SearchInfo info(1.5f);
+		SearchInfo info(0.5f * specs.difficulty);
 
 		for (int32_t c_depth = 1; c_depth <= depth; c_depth++)
 		{

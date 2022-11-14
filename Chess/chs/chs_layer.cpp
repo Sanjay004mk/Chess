@@ -11,6 +11,10 @@
 
 namespace chs
 {
+	extern bool moveMade;
+	extern bool askPromotion;
+	static char fen[256] = {};
+
 	static ImVec2 GetImVec2(const glm::vec2& vector)
 	{
 		ET_STATIC_ASSERT(sizeof(glm::vec2) == sizeof(ImVec2));
@@ -125,12 +129,24 @@ namespace chs
 
 	bool ChessLayer::StartGame(std::string_view fen_string)
 	{
-		Board temp(fen_string);
-		if (!temp.Valid())
+		board = et::CreateRef<Board>(fen_string, boardCreateSpecs);
+		if (!board->Valid())
+		{
+			board.reset();
 			return false;
-		board = et::CreateRef<Board>(temp);
+		}
 		tileManager.board = board.get();
 		return true;
+	}
+
+	void ChessLayer::PlayEngineMove()
+	{
+		auto move = board->Search(MAX_DEPTH / 2);
+		ET_DEBUG_ASSERT(move.Valid());
+		board->MovePiece(move);
+		board->UpdateCheckmate();
+		tileManager.UpdateFromTo(GetPositionFromIndex(move.From()), GetPositionFromIndex(move.To()));
+		tileManager.PlayAnimation(move);
 	}
 
 	void ChessLayer::OnUpdate(et::TimeStep ts)
@@ -154,28 +170,27 @@ namespace chs
 		et::RenderCommand::EndCommandBuffer();
 
 		et::Renderer::Present(screen);
+
+		if (moveMade)
+		{
+			moveMade = false;
+			if (board->turn == board->specs.player[1] && board->specs.type == MatchType::VsComputer)
+				PlayEngineMove();
+		}
+
 	}
 
-	extern bool askPromotion;
-	static char fen[256] = {};
+	static ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoDecoration
+	| ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove
+	| ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
+
+	static ImGuiViewport* viewport;
+	static ImVec2 viewport_size;
+	static ImVec2 viewport_pos;
+	float wtos;
 
 	void ChessLayer::DisplayBoardUI()
 	{
-		ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoDecoration;
-		window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
-		window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
-
-		ImGuiViewport* viewport = ImGui::GetMainViewport();
-		ImVec2 viewport_size = viewport->Size;
-		ImVec2 viewport_pos = viewport->Pos;
-
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.f, 0.f));
-		ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(CLEAR_COLOR, 1.f));
-
-		float wtos = tileManager.WorldToScreenUnit();
-
 		if (askPromotion)
 		{
 			auto pos = tileManager.WorldPosToScreenPos(glm::vec2(-3.5f, 0.5f));
@@ -281,106 +296,181 @@ namespace chs
 			}
 		}
 
-		// home button
+		DisplayHomeButton();
+	}
+
+	void ChessLayer::DisplayMainMenu()
+	{
+		// mode selection ( vs player / computer )
+		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(wtos / 2.f, wtos / 2.f));
+		ImVec2 text_size = ImGui::CalcTextSize("Vs Player");
+		text_size.x += wtos;
+		text_size.y += wtos;
+
+		ImGui::SetCursorPosY((viewport_size.y - text_size.y * 3) / 2.f);
+		ImGui::SetCursorPosX((viewport_size.x - text_size.x) / 2.f);
+		if (ImGui::Button("Vs Player", ImVec2(text_size)))
+			menuState = MenuState::VsPlayer;
+
+		text_size = ImGui::CalcTextSize("Vs Computer");
+		text_size.x += wtos;
+		text_size.y += wtos;
+
+		ImGui::SetCursorPosY((viewport_size.y + text_size.y) / 2.f);
+		ImGui::SetCursorPosX((viewport_size.x - text_size.x) / 2.f);
+		if (ImGui::Button("Vs Computer", ImVec2(text_size)))
+			menuState = MenuState::VsComputer;
+
+		ImGui::PopStyleVar();
+		
+	}
+
+	void ChessLayer::DisplayVsCompMenu()
+	{
+		boardCreateSpecs.type = MatchType::VsComputer;
+
+		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(wtos / 2.f, wtos / 2.f));
+		ImVec2 text_size = ImGui::CalcTextSize("Difficulty");
+		text_size.y += wtos;
+
+		ImGui::SetCursorPosY((viewport_size.y - text_size.y * 3) / 2.f);
+		ImGui::SetCursorPosX((viewport_size.x - text_size.x) / 2.f);
+		ImGui::Text("Difficulty");
+
+		text_size.x += wtos * 3.f;
+		ImGui::SetCursorPosY((viewport_size.y - text_size.y * 1.6f) / 2.f);
+		ImGui::SetCursorPosX((viewport_size.x - text_size.x) / 2.f);
+		ImGui::SetNextItemWidth(text_size.x);
+		ImGui::DragFloat("##difficult", &boardCreateSpecs.difficulty, 0.1f, 1.f, 10.f);
+
+		text_size = ImGui::CalcTextSize("Next");
+		text_size.x += wtos;
+		text_size.y += wtos;
+
+		ImGui::SetCursorPosY((viewport_size.y + text_size.y * 3) / 2.f);
+		ImGui::SetCursorPosX((viewport_size.x - text_size.x) / 2.f);
+		if (ImGui::Button("Next", ImVec2(text_size)))
+			menuState = MenuState::LevelSelect;
+
+
+		ImGui::PopStyleVar();
+
+		DisplayHomeButton();
+	}
+
+	void ChessLayer::DisplayLevelSelectMenu()
+	{
+		// start new game / load from fen
+		ImVec2 text_size = ImGui::CalcTextSize("Start New Game");
+		text_size.x += wtos;
+		text_size.y += wtos;
+
+		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(wtos / 2.f, wtos / 2.f));
+		ImGui::SetCursorPosY((viewport_size.y - text_size.y * 4) / 2.f);
+		ImGui::SetCursorPosX((viewport_size.x - text_size.x) / 2.f);
+
+		if (ImGui::Button("Start New Game", ImVec2(text_size)))
 		{
-			ImGui::SetNextWindowPos(ImVec2(viewport_pos.x + wtos * 0.1f, viewport_pos.y + wtos * 0.1f));
-			ImGui::Begin("back_button", nullptr, window_flags);
-			if (ImGui::Button("<-", ImVec2(wtos * 0.8f, wtos * 0.8f)))
+			StartNewGame();
+			menuState = MenuState::InGame;
+		}
+
+		static float fen_inp_len = 24 * ImGui::GetFontSize();
+		ImGui::SetCursorPosX((viewport_size.x - fen_inp_len) / 2.f);
+		ImGui::SetCursorPosY((viewport_size.y - text_size.y) / 2.f);
+		ImGui::PushItemWidth(fen_inp_len);
+		ImGui::InputText("##fen", fen, 256);
+
+		text_size.x = wtos + ImGui::CalcTextSize("Load From FEN").x;
+		ImGui::SetCursorPosY((viewport_size.y + text_size.y * 2.f) / 2.f);
+		ImGui::SetCursorPosX((viewport_size.x - text_size.x) / 2.f);
+		if (ImGui::Button("Load From FEN", ImVec2(text_size)))
+		{
+			if (StartGame(fen))
+				menuState = MenuState::InGame;
+		}
+
+		ImGui::PopStyleVar();
+
+		DisplayHomeButton();
+	}
+
+	void ChessLayer::DisplayVsPlayerMenu()
+	{
+		boardCreateSpecs.type = MatchType::VsPlayer;
+
+		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(wtos / 2.f, wtos / 2.f));
+		ImVec2 text_size = ImGui::CalcTextSize("Next");
+		text_size.x += wtos;
+		text_size.y += wtos;
+
+		ImGui::SetCursorPosY((viewport_size.y + text_size.y * 3) / 2.f);
+		ImGui::SetCursorPosX((viewport_size.x - text_size.x) / 2.f);
+		if (ImGui::Button("Next", ImVec2(text_size)))
+			menuState = MenuState::LevelSelect;
+
+
+		ImGui::PopStyleVar();
+
+		DisplayHomeButton();
+	}
+
+	static float back_button_size = 50.f;
+
+	void ChessLayer::DisplayHomeButton()
+	{
+		// home button
+		ImGui::SetNextWindowPos(ImVec2(viewport_pos.x + back_button_size * 0.1f, viewport_pos.y + back_button_size * 0.1f));
+		ImGui::Begin("back_button", nullptr, window_flags);
+		if (ImGui::ImageButton(textures[0]->GetImGuiTextureID(), ImVec2(back_button_size * 0.8f, back_button_size * 0.8f)))
+		{
+			board.reset();
+			tileManager.board = nullptr;
+			memset(fen, 0, sizeof(fen));
+			menuState = MenuState::MainMenu;
+		}
+		ImGui::End();
+	}
+
+	void ChessLayer::OnImGuiRender()
+	{
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.f, 0.f));
+		ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(CLEAR_COLOR, 1.f));
+
+		viewport = ImGui::GetMainViewport();
+		viewport_size = viewport->Size;
+		viewport_pos = viewport->Pos;
+		wtos = tileManager.WorldToScreenUnit();
+
+		if (menuState == MenuState::InGame)
+			DisplayBoardUI();
+		else
+		{
+			ImGui::SetNextWindowPos(viewport_pos);
+			ImGui::SetNextWindowSize(viewport_size);
+			ImGui::Begin("MENU", nullptr, window_flags);
+			switch (menuState)
 			{
-				board.reset();
-				tileManager.board = nullptr;
-				memset(fen, 0, sizeof(fen));
+			case MenuState::MainMenu:
+				DisplayMainMenu();
+				break;
+			case MenuState::LevelSelect:
+				DisplayLevelSelectMenu();
+				break;
+			case MenuState::VsComputer:
+				DisplayVsCompMenu();
+				break;
+			case MenuState::VsPlayer:
+				DisplayVsPlayerMenu();
+				break;
 			}
 			ImGui::End();
 		}
 
 		ImGui::PopStyleVar(3);
 		ImGui::PopStyleColor();
-	}
-
-	void ChessLayer::DisplayMainMenu()
-	{
-		ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoDecoration;
-		window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
-		window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
-
-		ImGuiViewport* viewport = ImGui::GetMainViewport();
-		ImVec2 viewport_size = viewport->Size;
-		ImVec2 viewport_pos = viewport->Pos;
-
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.f, 0.f));
-		ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(CLEAR_COLOR, 1.f));
-
-		float wtos = tileManager.WorldToScreenUnit();
-
-		ImGui::SetNextWindowPos(viewport_pos);
-		ImGui::SetNextWindowSize(viewport_size);
-		ImGui::Begin("MENU", nullptr, window_flags);
-		// mode selection ( vs player / computer )
-		if (inMainMenu)
-		{
-			// tmp
-			ImVec2 text_size = ImGui::CalcTextSize("Vs Player");
-			text_size.x += wtos;
-			text_size.y += wtos;
-
-			ImGui::SetCursorPosY((viewport_size.y - text_size.y) / 2.f);
-			ImGui::SetCursorPosX((viewport_size.x - text_size.x) / 2.f);
-			ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(wtos / 2.f, wtos / 2.f));
-			if (ImGui::Button("Vs Player", ImVec2(text_size)))
-				inMainMenu = false;
-
-			ImGui::PopStyleVar();
-		}
-		// start new game / load from fen
-		else
-		{
-			// tmp
-			ImVec2 text_size = ImGui::CalcTextSize("Start New Game");
-			text_size.x += wtos;
-			text_size.y += wtos;
-
-			ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(wtos / 2.f, wtos / 2.f));
-			ImGui::SetCursorPosY((viewport_size.y - text_size.y * 4) / 2.f);
-			ImGui::SetCursorPosX((viewport_size.x - text_size.x) / 2.f);
-
-			if (ImGui::Button("Start New Game", ImVec2(text_size)))
-			{
-				StartNewGame();
-				inMainMenu = true;
-			}
-
-			static float fen_inp_len = 24 * ImGui::GetFontSize();
-			ImGui::SetCursorPosX((viewport_size.x - fen_inp_len) / 2.f);
-			ImGui::SetCursorPosY((viewport_size.y - text_size.y ) / 2.f);
-			ImGui::PushItemWidth(fen_inp_len);
-			ImGui::InputText("##fen", fen, 256);
-
-			text_size.x = wtos + ImGui::CalcTextSize("Load From FEN").x;
-			ImGui::SetCursorPosY((viewport_size.y + text_size.y * 2.f) / 2.f);
-			ImGui::SetCursorPosX((viewport_size.x - text_size.x) / 2.f);
-			if (ImGui::Button("Load From FEN", ImVec2(text_size)))
-			{
-				if (StartGame(fen))
-					inMainMenu = true;
-			}
-
-			ImGui::PopStyleVar();
-		}
-		ImGui::End();
-
-		ImGui::PopStyleVar(3);
-		ImGui::PopStyleColor();
-	}
-
-	void ChessLayer::OnImGuiRender()
-	{
-		if (board)
-			DisplayBoardUI();
-		else
-			DisplayMainMenu();		
 	}
 
 	static bool perft = false;
@@ -428,14 +518,7 @@ namespace chs
 						search = false;
 						int32_t depth = e.GetKeyCode() - et::Key::D0;
 						if (depth > 0 && depth < 10)
-						{
-							auto move = this->board->Search(depth);
-							ET_DEBUG_ASSERT(move.Valid());
-							this->board->MovePiece(move);
-							this->board->UpdateCheckmate();
-							this->tileManager.UpdateFromTo(GetPositionFromIndex(move.From()), GetPositionFromIndex(move.To()));
-							this->tileManager.PlayAnimation(move);
-						}
+							PlayEngineMove();
 					}
 					else if (control)
 					{
@@ -443,16 +526,26 @@ namespace chs
 						{
 						case et::Key::Z:
 						{
+#define UNDO this->board->Undo();\
+			if (!this->board->playedMoves.empty())\
+			{\
+				auto [move, d] = this->board->playedMoves.back();\
+				this->tileManager.UpdateFromTo(GetPositionFromIndex(move.From()), GetPositionFromIndex(move.To()));\
+			}\
+			else\
+				this->tileManager.UpdateFromTo({}, {})
+
 							this->tileManager.ClearTiles();
-							this->board->Undo();
-							if (!this->board->playedMoves.empty())
+							UNDO;
+
+							if (this->board->specs.type == MatchType::VsComputer)
 							{
-								auto [move, d] = this->board->playedMoves.back();
-								this->tileManager.UpdateFromTo(GetPositionFromIndex(move.From()), GetPositionFromIndex(move.To()));
+								UNDO;
 							}
-							else
-								this->tileManager.UpdateFromTo({}, {});
+							
 							break;
+
+#undef UNDO
 						}
 						case et::Key::C:
 						{
