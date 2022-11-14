@@ -14,7 +14,7 @@
 #define MAX_MOVES 256
 
 #define SEARCH_TIMEOUT 5.f
-#define SEARCH_DEPTH 3
+#define SEARCH_DEPTH 4
 #define CHECKMATESCORE 29000
 #define INF 30000
 
@@ -61,7 +61,18 @@ namespace chs
 		friend class Board;
 	};
 
-	using GetMoveFn = void(*)(const Board*, int32_t, std::vector<Move>&);
+	using GetMoveFn = void(*)(const Board*, int32_t, MoveList&);
+
+	struct SearchInfo
+	{
+		SearchInfo() : start_depth(MAX_DEPTH) {}
+		SearchInfo(int32_t d) : start_depth(d) {}
+
+		const int32_t start_depth;
+		int32_t nodes = 0;
+		float fh = 0.f;
+		float fhf = 0.f;
+	};
 
 	// used for vs Player / vs Computer
 	struct BoardSpecification
@@ -109,23 +120,24 @@ namespace chs
 
 		std::string GetFEN() const;
 
-		size_t PerftTest(int32_t& capture, int32_t& ep, int32_t& castles, int32_t& prom,
-			std::vector<std::vector<Move>>& depth_moves, int32_t depth = 6);
+		size_t PerftTest(int32_t& capture, int32_t& ep, int32_t& castles, int32_t& prom, int32_t depth = 6);
 		void PerftRoot(int32_t depth);
 
 		void PrintPvLine(int32_t count) const;
 
 	private:
-		std::vector<Move> GetAllMoves(Color side);
-		void GetAllMoves(std::vector<Move>& moves, Color side);
-		std::vector<Move> GetAllLegalMoves(Color side);
-		void GetAllLegalMoves(std::vector<Move>& moves, Color side);
+		MoveList GetAllMoves(Color side);
+		void GetAllMoves(MoveList& moves, Color side);
+		MoveList GetAllLegalMoves(Color side);
+		void GetAllLegalMoves(MoveList& moves, Color side);
 
 		void ResetForSearch();
 		int32_t GetPvLine(int32_t depth);
-		int32_t AlphaBeta(int32_t alpha, int32_t beta, int32_t depth, std::vector<std::vector<Move>>& moves);
+		int32_t AlphaBeta(int32_t alpha, int32_t beta, int32_t depth, SearchInfo& info);
 
 		void CalcMaterialScores();
+		int32_t MVV_LVA(Move move);
+		void PickNextMove(int32_t index, MoveList& moves);
 
 		bool IsInCheck(Color side);
 		bool AddPiece(int32_t index, PieceType piece);
@@ -134,7 +146,7 @@ namespace chs
 		bool MovePiece(Move& move);
 		bool Revert();
 		void LoadFromFen(std::string_view fen_string);
-		std::vector<Move> GetMoveTiles(int32_t position);
+		MoveList GetMoveTiles(int32_t position);
 
 		BoardSpecification specs;
 		PieceType tiles[64] = { 0 };		
@@ -174,13 +186,13 @@ namespace chs
 		friend struct PieceIterator;
 		friend class ChessLayer;
 
-		friend void Slide(const Board* board, int32_t index, const glm::ivec2& direction, std::vector<Move>& moves);
-		friend void PawnMoves(const Board* board, int32_t index, std::vector<Move>& moves);
-		friend void RookMoves(const Board* board, int32_t index, std::vector<Move>& moves);
-		friend void KnightMoves(const Board* board, int32_t index, std::vector<Move>& moves);
-		friend void BishopMoves(const Board* board, int32_t index, std::vector<Move>& moves);
-		friend void QueenMoves(const Board* board, int32_t index, std::vector<Move>& moves);
-		friend void KingMoves(const Board* board, int32_t index, std::vector<Move>& moves);
+		friend void Slide(const Board* board, int32_t index, const glm::ivec2& direction, MoveList& moves);
+		friend void PawnMoves(const Board* board, int32_t index, MoveList& moves);
+		friend void RookMoves(const Board* board, int32_t index, MoveList& moves);
+		friend void KnightMoves(const Board* board, int32_t index, MoveList& moves);
+		friend void BishopMoves(const Board* board, int32_t index, MoveList& moves);
+		friend void QueenMoves(const Board* board, int32_t index, MoveList& moves);
+		friend void KingMoves(const Board* board, int32_t index, MoveList& moves);
 	};
 
 	void PreComputeBoardHashes();

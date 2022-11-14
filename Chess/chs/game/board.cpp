@@ -5,7 +5,7 @@
 
 namespace chs
 {
-	void EmptyMoves(const Board*, int32_t, std::vector<Move>&)
+	void EmptyMoves(const Board*, int32_t, MoveList&)
 	{
 	}
 
@@ -122,7 +122,7 @@ namespace chs
 		}
 		ET_DEBUG_ASSERT(fen_string[i] == ' ' || fen_string[i] == 0);
 		// if fen string has only pieces
-		if (fen_string[i] == 0)
+		if (fen_string.size() == i)
 			return;
 
 		turn = (fen_string[++i] == 'w') ? White : Black;
@@ -153,12 +153,18 @@ namespace chs
 		if (fen_string[i] != '-')
 		{
 			enPassant = FileRankToIndex(fen_string[i], fen_string[i + 1]);
-			// algebra move and white space
-			i += 3;
+			// algebra move
+			i += 2;
 		}
 		else
-			// '-' and white space
-			i += 2;
+			// '-'
+			i++;
+
+		if (fen_string.size() == i)
+			return;
+
+		// whitespace
+		i++;
 
 		// 50 moves and full moves
 		char str[3] = { fen_string[i], fen_string[++i], 0 };
@@ -304,24 +310,23 @@ namespace chs
 		return true;
 	}
 
-	size_t Board::PerftTest(int32_t& capture, int32_t& ep, int32_t& castles, int32_t& prom, std::vector<std::vector<Move>>& depth_moves, int32_t depth)
+	size_t Board::PerftTest(int32_t& capture, int32_t& ep, int32_t& castles, int32_t& prom, int32_t depth)
 	{
 		if (depth <= 0)
 			return 1ull;
 
 		size_t nodes = 0;
 
-		depth_moves[depth].clear();
-		GetAllMoves(depth_moves[depth], turn);
+		auto moves = GetAllMoves(turn);
 
-		for (auto move : depth_moves[depth])
+		for (auto move : moves)
 		{
 			ET_DEBUG_ASSERT(move.Valid());
 			MovePiece(move);
 
 			if (!IsAttacked(pieces[BlackKing + GetOppColor(turn)].positions[0], turn))
 			{
-				nodes += PerftTest(capture, ep, castles, prom, depth_moves, depth - 1);
+				nodes += PerftTest(capture, ep, castles, prom, depth - 1);
 
 				if (move.Capture())
 					capture++;
@@ -351,10 +356,6 @@ namespace chs
 		size_t nodes = 0;
 
 		auto moves = GetAllMoves(turn);
-		// pre allocate memory for storing all moves
-		std::vector<std::vector<Move>> perft_moves(depth);
-		for (auto& moves : perft_moves)
-			moves.reserve(256);
 
 		for (auto move : moves)
 		{
@@ -362,7 +363,7 @@ namespace chs
 
 			if (!IsAttacked(pieces[BlackKing + GetOppColor(turn)].positions[0], turn))
 			{
-				auto temp = PerftTest(captures, ep, castles, prom, perft_moves, depth - 1);
+				auto temp = PerftTest(captures, ep, castles, prom, depth - 1);
 				nodes += temp;
 
 				if (move.Capture())
@@ -821,61 +822,45 @@ namespace chs
 		return tiles;
 	}
 
-	// number of moves each piece can have
-	static size_t def_vec_size[13] = { 0, 10, 10, 14, 14, 8, 8, 14, 14, 28, 28, 8, 8 };
-
-	std::vector<Move> Board::GetMoveTiles(int32_t position)
+	MoveList Board::GetMoveTiles(int32_t position)
 	{
-		std::vector<Move> moves;
-		moves.reserve(def_vec_size[tiles[position]]);
+		MoveList moves;
 		GetMoves[tiles[position]](this, position, moves);
 		return moves;
 	}
 
-	std::vector<Move> Board::GetAllMoves(Color side)
+	MoveList Board::GetAllMoves(Color side)
 	{
-		std::vector<Move> moves;
-		moves.reserve(256);
+		MoveList moves;
 
 		GetAllMoves(moves, side);
 
 		return moves;		
 	}
 
-	void Board::GetAllMoves(std::vector<Move>& moves, Color side)
+	void Board::GetAllMoves(MoveList& moves, Color side)
 	{
-		for (uint32_t i = 1; i < 13; i++)
+		for (uint32_t i = 1 + side; i < 13; i += 2)
 		{
-			if (GetColor(i) != side)
-				continue;
-
 			for (uint32_t count = 0; count < pieces[i].count; count++)
 				GetMoves[i](this, pieces[i].positions[count], moves);
 		}
 	}
 
-	std::vector<Move> Board::GetAllLegalMoves(Color side)
+	MoveList Board::GetAllLegalMoves(Color side)
 	{
-		std::vector<Move> moves;
-		moves.reserve(256);
+		MoveList moves;
 		GetAllLegalMoves(moves, side);
 		return moves;
 	}
 
-	void Board::GetAllLegalMoves(std::vector<Move>& moves, Color side)
+	void Board::GetAllLegalMoves(MoveList& moves, Color side)
 	{
 		GetAllMoves(moves, side);
 		// check if move results in current side ending up in check
-		static std::array<Move, 256> copy = {};
-		ET_DEBUG_ASSERT(moves.size() <= 256);
-		memset(copy.data(), 0, sizeof(copy));
-		memcpy_s(copy.data(), sizeof(Move) * moves.size(), moves.data(), sizeof(Move) * moves.size());
+		auto copy = moves;
 		for (auto& move : copy)
 		{
-			// iterating over array so break when we reach end of memcpy
-			if (!move.data)
-				break;
-
 			auto c_move = move;
 			MovePiece(move);
 
@@ -926,19 +911,29 @@ namespace chs
 
 	int32_t Board::Evaluate(Color side) const
 	{
-		int32_t score = materialScore[side] - materialScore[GetOppColor(side)];
+		int32_t score = materialScore[White] - materialScore[Black];
 		for (uint32_t i = 1; i < 9; i ++)
 		{
 			for (uint32_t p = 0; p < pieces[i].count; p++)
 			{
-				if (GetColor(i) == side)
+				if (GetColor(i) == White)
 					score += positionWeights[i][pieces[i].positions[p]];
 				else
 					score -= positionWeights[i][pieces[i].positions[p]];
 
 			}
 		}
-		return score;
+		return side == White ? -score : score;
+	}
+
+	int32_t Board::MVV_LVA(Move move)
+	{
+		if (!move.Capture())
+			return 0;
+
+		auto attacker = tiles[move.From()];
+		auto victim = move.EnPassant() ? tiles[EnPassantToPiece(move.To())] : tiles[move.To()];
+		return ::chs::MVV_LVA(victim, attacker);
 	}
 
 	int32_t Board::GetPvLine(int32_t depth)
@@ -974,37 +969,64 @@ namespace chs
 		pv_moves.fill(Move());
 	}
 
-	int32_t Board::AlphaBeta(int32_t alpha, int32_t beta, int32_t depth, std::vector<std::vector<Move>>& moves)
+	void Board::PickNextMove(int32_t index, MoveList& moves)
+	{
+		ET_DEBUG_ASSERT(index < moves.size());
+		Move move = moves[index];
+		int32_t bestScore = MVV_LVA(move);
+		int32_t bestI = index;
+
+		for (size_t i = index; i < moves.size(); i++)
+		{
+			int32_t score = MVV_LVA(moves[i]);
+			if (score > bestScore)
+			{
+				bestScore = score;
+				bestI = (int32_t)i;
+			}
+		}
+
+		std::swap(moves[index], moves[bestI]);
+	}
+
+	int32_t Board::AlphaBeta(int32_t alpha, int32_t beta, int32_t depth, SearchInfo& info)
 	{
 		ET_DEBUG_ASSERT(Valid());
-
+		info.nodes++;
 		if (depth <= 0)
 			return Evaluate(turn);
 
 		if (IsRepeated() || fiftyMove >= 100)
 			return 0;
 
-		moves[depth - 1].clear();
-		GetAllLegalMoves(moves[depth - 1], turn);
+		MoveList mvs;
+		GetAllLegalMoves(mvs, turn);
 
-		bool legal = false;
+		int32_t legal = 0;
 		Move bestMove;
 		int32_t old_alpha = alpha;
 		int32_t score = -INF;
 
-		for (auto move : moves[depth - 1])
+		for (size_t i = 0; i < mvs.size(); i++)
 		{
+			PickNextMove((int32_t)i, mvs);
+			auto move = mvs[i];
 			if (!MovePiece(move))
 				continue;
 
-			legal = true;
-			score = -AlphaBeta(-beta, -alpha, depth - 1, moves);
+			legal++;
+			score = -AlphaBeta(-beta, -alpha, depth - 1, info);
 			Revert();
 
 			if (score > alpha)
 			{
 				if (score >= beta)
+				{
+					if (legal == 1)
+						info.fhf++;
+					info.fh++;
 					return beta;
+				}
 				alpha = score;
 				bestMove = move;
 			}
@@ -1013,7 +1035,7 @@ namespace chs
 		if (!legal)
 		{
 			if (IsAttacked(pieces[BlackKing + turn].positions[0], turn))
-				return -CHECKMATESCORE;
+				return -CHECKMATESCORE + (info.start_depth - depth);
 
 			return 0;
 		}
@@ -1034,17 +1056,16 @@ namespace chs
 
 		ResetForSearch();
 
-		std::vector<std::vector<Move>> moves(depth);
-		for (auto& v : moves)
-			v.reserve(256);
-
 		for (int32_t c_depth = 1; c_depth <= depth; c_depth++)
 		{
-			bestScore = AlphaBeta(-INF, INF, c_depth, moves);
+			SearchInfo info(c_depth);
+			bestScore = AlphaBeta(-INF, INF, c_depth, info);
 
 			auto i = GetPvLine(c_depth);
 			bestMove = pv_moves[0];
-			ET_LOG_INFO("Depth: {} -Nodes-: {} Score: {} {}", c_depth, -1, bestScore, (Move)bestMove);
+			if (bestScore > (CHECKMATESCORE - c_depth))
+				ET_LOG_INFO("CHECKMATE MOVE");
+			ET_LOG_INFO("Depth: {} Nodes: {} Score: {} Ordering: {} Move: {}", c_depth, info.nodes, bestScore, info.fhf / info.fh, (Move)bestMove);
 			PrintPvLine(i);
 			/*if (t.Elapsed() >= SEARCH_TIMEOUT)
 				break;*/

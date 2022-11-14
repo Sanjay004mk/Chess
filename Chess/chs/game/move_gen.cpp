@@ -30,7 +30,7 @@ namespace chs
 	};
 
 	// side capture / en passant capture
-	static void side_capture(const Position& position, int32_t forward, const PieceType tiles[64], int32_t enPassant, bool isWhite, bool prom, int32_t index, std::vector<Move>& moves, int32_t side, int32_t& index__)
+	static void side_capture(const Position& position, int32_t forward, const PieceType tiles[64], int32_t enPassant, bool isWhite, bool prom, int32_t index, MoveList& moves, int32_t side, int32_t& index__)
 	{
 		int32_t enP = 0;
 		if (position.Move(side, forward, index__))
@@ -68,7 +68,7 @@ namespace chs
 		}
 	};
 
-	void PawnMoves(const Board* board, int32_t index, std::vector<Move>& moves)
+	void PawnMoves(const Board* board, int32_t index, MoveList& moves)
 	{
 		auto& piece = board->tiles[index];
 		ET_DEBUG_ASSERT(IsPawn(piece));
@@ -122,7 +122,7 @@ namespace chs
 		side_capture(position, forward, board->tiles, board->enPassant, isWhite, prom, index, moves, -1, possible[3]);
 	}
 
-	void Slide(const Board* board, int32_t index, const glm::ivec2& direction, std::vector<Move>& moves)
+	void Slide(const Board* board, int32_t index, const glm::ivec2& direction, MoveList& moves)
 	{
 		auto start_index = index;
 		Position position(index);
@@ -146,7 +146,7 @@ namespace chs
 		}
 	}
 
-	void RookMoves(const Board* board, int32_t index, std::vector<Move>& moves)
+	void RookMoves(const Board* board, int32_t index, MoveList& moves)
 	{
 		Slide(board, index, glm::ivec2(1, 0), moves);
 		Slide(board, index, glm::ivec2(-1, 0), moves);
@@ -154,7 +154,7 @@ namespace chs
 		Slide(board, index, glm::ivec2(0, -1), moves);
 	}
 
-	static void load_knight(const Position& position, const PieceType tiles[64], int32_t index, std::vector<Move>& moves, bool isWhite, const glm::ivec2& offs)
+	static void load_knight(const Position& position, const PieceType tiles[64], int32_t index, MoveList& moves, bool isWhite, const glm::ivec2& offs)
 	{
 		int32_t end_index = -1;
 		if (position.Move(offs.x, offs.y, end_index))
@@ -170,7 +170,7 @@ namespace chs
 		}
 	};
 
-	void KnightMoves(const Board* board, int32_t index, std::vector<Move>& moves)
+	void KnightMoves(const Board* board, int32_t index, MoveList& moves)
 	{
 		Position position(index);
 
@@ -187,7 +187,7 @@ namespace chs
 		load_knight(position, board->tiles, index, moves, isWhite, glm::ivec2(-2, 1));
 	}
 
-	void BishopMoves(const Board* board, int32_t index, std::vector<Move>& moves)
+	void BishopMoves(const Board* board, int32_t index, MoveList& moves)
 	{
 		Slide(board, index, glm::ivec2(1, 1), moves);
 		Slide(board, index, glm::ivec2(-1, 1), moves);
@@ -195,7 +195,7 @@ namespace chs
 		Slide(board, index, glm::ivec2(1, -1), moves);
 	}
 
-	void QueenMoves(const Board* board, int32_t index, std::vector<Move>& moves)
+	void QueenMoves(const Board* board, int32_t index, MoveList& moves)
 	{
 		Slide(board, index, glm::ivec2(1, 0), moves);
 		Slide(board, index, glm::ivec2(-1, 0), moves);
@@ -207,7 +207,7 @@ namespace chs
 		Slide(board, index, glm::ivec2(1, -1), moves);
 	}
 
-	static void load_king(const Position& position, const PieceType tiles[64], int32_t index, std::vector<Move>& moves, bool isWhite, const glm::ivec2& offs)
+	static void load_king(const Position& position, const PieceType tiles[64], int32_t index, MoveList& moves, bool isWhite, const glm::ivec2& offs)
 	{
 		int32_t end_index = -1;
 		if (position.Move(offs.x, offs.y, end_index))
@@ -223,7 +223,7 @@ namespace chs
 		}
 	};
 
-	static void check_castle(const Board* board, int32_t castlePermission, const PieceType tiles[64], int32_t index, std::vector<Move>& moves, bool queenside)
+	static void check_castle(const Board* board, int32_t castlePermission, const PieceType tiles[64], int32_t index, MoveList& moves, bool queenside)
 	{
 		if (CanCastle(castlePermission, GetColor(tiles[index]), queenside))
 		{
@@ -257,7 +257,7 @@ namespace chs
 		}
 	};
 
-	void KingMoves(const Board* board, int32_t index, std::vector<Move>& moves)
+	void KingMoves(const Board* board, int32_t index, MoveList& moves)
 	{
 		Position position(index);
 

@@ -73,6 +73,7 @@ namespace chs
 	extern bool IsMinor[13];
 
 	extern int32_t scores[13];
+	extern int32_t victim_scores[13];
 
 	extern PieceWeight positionWeights[13];
 
@@ -168,6 +169,11 @@ namespace chs
 			mask = mask << 1;
 
 		castlePerm  = castlePerm & ~mask;
+	}
+
+	inline int32_t MVV_LVA(PieceType victim, PieceType attacker)
+	{
+		return victim_scores[victim] + (6 - (victim_scores[attacker] / 100));
 	}
 
 	template <typename T = float>

@@ -1,3 +1,4 @@
+#include <iostream>
 #include "pieces.h"
 
 namespace chs
@@ -89,23 +90,46 @@ namespace chs
 	{
 		0,     // empty
 
-		1,	   // pawn
-		1,
+		100,	   // pawn
+		100,
 
-		5,	  // rook
-		5,
+		550,	  // rook
+		550,
 
-		3,	  // knight
-		3,
+		325,	  // knight
+		325,
 
-		3,	  // bishop
-		3,
+		325,	  // bishop
+		325,
 
-		9,	  // queen
-		9,
+		1000,	  // queen
+		1000,
 
-		10,	  // king
-		10,
+		50000,	  // king
+		50000,
+	};
+
+	extern int32_t victim_scores[13] =
+	{
+		0,     // empty
+
+		100,	   // pawn
+		100,
+
+		400,	  // rook
+		400,
+
+		200,	  // knight
+		200,
+
+		300,	  // bishop
+		300,
+
+		500,	  // queen
+		500,
+
+		600,	  // king
+		600,
 	};
 
 	PieceWeight::PieceWeight(PieceType piece)

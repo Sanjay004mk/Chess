@@ -382,6 +382,7 @@ namespace chs
 	}
 
 	static bool perft = false;
+	static bool search = false;
 
 	void ChessLayer::OnEvent(et::Event& e)
 	{
@@ -420,6 +421,18 @@ namespace chs
 						if (depth > 0 && depth < 10)
 							this->board->PerftRoot(depth);
 					}
+					else if (search)
+					{
+						search = false;
+						int32_t depth = e.GetKeyCode() - et::Key::D0;
+						if (depth > 0 && depth < 10)
+						{
+							auto move = this->board->Search(depth);
+							ET_DEBUG_ASSERT(move.Valid());
+							this->board->MovePiece(move);
+							this->board->UpdateCheckmate();
+						}
+					}
 					else if (control)
 					{
 						switch (e.GetKeyCode())
@@ -455,10 +468,7 @@ namespace chs
 						}
 						case et::Key::H:
 						{
-							auto move = this->board->Search(SEARCH_DEPTH);
-							ET_DEBUG_ASSERT(move.Valid());
-							this->board->MovePiece(move);
-							this->board->UpdateCheckmate();
+							search = true;
 							break;
 						}
 						}

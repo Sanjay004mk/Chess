@@ -35,10 +35,12 @@ namespace chs
 
 	std::ostream& operator<<(std::ostream& stream, const Move& move)
 	{
-		stream << "Move: [ " << "from: " << IndexToStr(move.From()) << ", to: " << IndexToStr(move.To()) << ", en passant: " << move.EnPassant();
-		stream << ", castle: " << move.Castle() << ", capture: " << move.Capture();
-		move.Valid() ? stream << " (Valid)" : stream << " (Invalid)";
-		stream << " ]";
+		stream << IndexToStr(move.From());
+		if (move.Capture())
+			stream << "x";
+		stream << IndexToStr(move.To());
+		if (move.IsPromoted())
+			stream << PieceToChar[move.PromotedTo()];
 		return stream;
 	}
 }

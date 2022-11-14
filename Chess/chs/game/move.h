@@ -155,6 +155,48 @@ namespace chs
 		friend std::ostream& operator<<(std::ostream& stream, const Move& move);
 	};
 
+	struct MoveList
+	{
+#define MV_LIST_SIZE 256
+
+		void push_back(const Move& move) { moves[count++] = move; }
+		Move pop_back() { return moves[count--]; }
+
+		auto begin() { return moves.begin(); }
+		auto end() { return moves.begin() + count; }
+
+		auto begin() const { return moves.begin(); }
+		auto end() const { return moves.begin() + count; }
+
+		void erase(std::array<Move, 256>::const_iterator it)
+		{
+			auto pos = it - begin();
+			ET_DEBUG_ASSERT((size_t)pos < count);
+			count--;
+			// last element
+			if (pos == count)
+			{
+				return;
+			}
+			auto diff = count - pos;
+			memmove_s(&moves[pos], sizeof(Move) * diff, &moves[pos + 1], sizeof(Move)* diff);
+		}
+
+		template <typename integer>
+		Move& operator[](integer i) { ET_DEBUG_ASSERT(i < count); return moves[i]; }
+
+		template <typename integer>
+		const Move& operator[](integer i) const { ET_DEBUG_ASSERT(i < count); return moves[i]; }
+
+		size_t size() const { return count; }
+
+	private:
+		std::array<Move, MV_LIST_SIZE> moves;
+		size_t count = 0;
+
+#undef MV_LIST_SIZE
+	};
+
 	struct MoveMetaData
 	{
 
