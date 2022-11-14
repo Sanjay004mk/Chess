@@ -65,13 +65,16 @@ namespace chs
 
 	struct SearchInfo
 	{
-		SearchInfo() : start_depth(MAX_DEPTH) {}
-		SearchInfo(int32_t d) : start_depth(d) {}
+		SearchInfo() { start_time = et::Time::GetTime();}
+		SearchInfo(float end_time) : timed(true) { start_time = et::Time::GetTime(); this->end_time = start_time + end_time; }
 
-		const int32_t start_depth;
 		int32_t nodes = 0;
 		float fh = 0.f;
 		float fhf = 0.f;
+		float start_time = 0.f;
+		float end_time = 0.f;
+		bool timed = false;
+		bool stopped = false;
 	};
 
 	// used for vs Player / vs Computer
@@ -130,10 +133,13 @@ namespace chs
 		void GetAllMoves(MoveList& moves, Color side);
 		MoveList GetAllLegalMoves(Color side);
 		void GetAllLegalMoves(MoveList& moves, Color side);
+		MoveList GetAllCaptureMoves(Color side);
+		void GetAllCaptureMoves(MoveList& moves, Color side);
 
 		void ResetForSearch();
 		int32_t GetPvLine(int32_t depth);
 		int32_t AlphaBeta(int32_t alpha, int32_t beta, int32_t depth, SearchInfo& info);
+		int32_t Quiescence(int32_t alpha, int32_t beta, SearchInfo& info);
 
 		void CalcMaterialScores();
 		int32_t MVV_LVA(Move move);
@@ -177,8 +183,11 @@ namespace chs
 		uint64_t minorBitBoard[2] = { 0 };
 
 		// for move searching
+		int32_t ply = 0;
 		std::array<Move, MAX_DEPTH> pv_moves;
 		std::unordered_map<size_t, Move> pv_table;
+		Move searchKillers[2][MAX_DEPTH] = {};
+		int32_t searchHistory[64][64] = {};
 
 		template <typename ostream>
 		friend ostream& operator<<(ostream& stream, const Board& board);

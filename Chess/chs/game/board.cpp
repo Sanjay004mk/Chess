@@ -606,6 +606,7 @@ namespace chs
 		poskeys.push_back(hashKey);
 		playedMoves.push_back({ move, data });
 		hashKey = hash();
+		ply++;
 		CalcMaterialScores();
 
 		ET_DEBUG_ASSERT(Valid());
@@ -663,6 +664,7 @@ namespace chs
 		hashKey = poskeys.back();
 		poskeys.pop_back();
 		playedMoves.pop_back();
+		ply--;
 		CalcMaterialScores();
 
 		ET_DEBUG_ASSERT(Valid());
@@ -876,6 +878,28 @@ namespace chs
 		}
 	}
 
+	MoveList Board::GetAllCaptureMoves(Color side)
+	{
+		MoveList moves;
+		GetAllCaptureMoves(moves, side);
+		return moves;
+	}
+
+	void Board::GetAllCaptureMoves(MoveList& moves, Color side)
+	{
+		GetAllLegalMoves(moves, side);
+		auto copy = moves;
+		for (auto& move : copy)
+		{
+			if (!move.Capture())
+			{
+				auto it = std::find(moves.begin(), moves.end(), move);
+				ET_DEBUG_ASSERT(it != moves.end());
+				moves.erase(it);
+			}
+		}
+	}
+
 	PieceType Board::GetTile(const glm::vec2& tile)
 	{
 		if (!InsideBoard(tile))
@@ -928,12 +952,26 @@ namespace chs
 
 	int32_t Board::MVV_LVA(Move move)
 	{
+		if (pv_table.count(hashKey))
+		{
+			if (pv_table.at(hashKey) == move)
+				return 2000000;
+		}
+		int32_t score = 0;
 		if (!move.Capture())
-			return 0;
+		{
+			if (move == searchKillers[0][ply])
+				return 900000;
+			else if (move == searchKillers[1][ply])
+				return 800000;
+			return searchHistory[move.From()][move.To()];
+		}
 
 		auto attacker = tiles[move.From()];
 		auto victim = move.EnPassant() ? tiles[EnPassantToPiece(move.To())] : tiles[move.To()];
-		return ::chs::MVV_LVA(victim, attacker);
+		score += ::chs::MVV_LVA(victim, attacker);
+
+		return score + 1000000;
 	}
 
 	int32_t Board::GetPvLine(int32_t depth)
@@ -967,6 +1005,11 @@ namespace chs
 	{
 		pv_table.clear();
 		pv_moves.fill(Move());
+		memset(searchKillers[0], 0, sizeof(searchKillers[0]));
+		memset(searchKillers[1], 0, sizeof(searchKillers[1]));
+		for (int32_t i = 0; i < 64; i++)
+			memset(searchHistory[i], 0, sizeof(searchHistory[i]));
+		ply = 0;
 	}
 
 	void Board::PickNextMove(int32_t index, MoveList& moves)
@@ -989,15 +1032,88 @@ namespace chs
 		std::swap(moves[index], moves[bestI]);
 	}
 
+#define CHECK_TIME if ((info.nodes & 2047) == 0)\
+					{\
+						if (et::Time::GetTime() > info.end_time && info.timed)\
+							info.stopped = true;\
+					}
+
+	int32_t Board::Quiescence(int32_t alpha, int32_t beta, SearchInfo& info)
+	{
+		ET_DEBUG_ASSERT(Valid());
+		info.nodes++;
+
+		CHECK_TIME;
+
+		if (IsRepeated() || fiftyMove >= 100)
+			return 0;
+
+		int32_t score = Evaluate(turn);
+		if (ply >= MAX_DEPTH)
+			return score;
+
+		if (score >= beta)
+			return beta;
+
+		if (score > alpha)
+			alpha = score;
+
+		MoveList mvs;
+		GetAllCaptureMoves(mvs, turn);
+
+		int32_t legal = 0;
+		Move bestMove;
+		int32_t old_alpha = alpha;
+		score = -INF;
+
+		for (size_t i = 0; i < mvs.size(); i++)
+		{
+			PickNextMove((int32_t)i, mvs);
+			auto move = mvs[i];
+			if (!MovePiece(move))
+				continue;
+
+			legal++;
+			score = -Quiescence(-beta, -alpha, info);
+			Revert();
+
+			if (info.stopped)
+				return 0;
+
+			if (score > alpha)
+			{
+				if (score >= beta)
+				{
+					if (legal == 1)
+						info.fhf++;
+					info.fh++;
+					return beta;
+				}
+				alpha = score;
+				bestMove = move;
+			}
+		}
+
+		if (alpha != old_alpha)
+			pv_table[hashKey] = bestMove;
+
+		return alpha;
+	}
+
 	int32_t Board::AlphaBeta(int32_t alpha, int32_t beta, int32_t depth, SearchInfo& info)
 	{
 		ET_DEBUG_ASSERT(Valid());
 		info.nodes++;
 		if (depth <= 0)
-			return Evaluate(turn);
+			return Quiescence(alpha, beta, info);
+
+		CHECK_TIME;
 
 		if (IsRepeated() || fiftyMove >= 100)
 			return 0;
+
+		if (ply >= MAX_DEPTH)
+			return Evaluate(turn);
 
 		MoveList mvs;
 		GetAllLegalMoves(mvs, turn);
@@ -1018,6 +1134,9 @@ namespace chs
 			score = -AlphaBeta(-beta, -alpha, depth - 1, info);
 			Revert();
 
+			if (info.stopped)
+				return 0;
+
 			if (score > alpha)
 			{
 				if (score >= beta)
@@ -1025,17 +1144,25 @@ namespace chs
 					if (legal == 1)
 						info.fhf++;
 					info.fh++;
+					if (!move.Capture())
+					{
+						searchKillers[1][ply] = searchKillers[0][ply];
+						searchKillers[0][ply] = move;
+					}
 					return beta;
 				}
 				alpha = score;
 				bestMove = move;
+
+				if (!move.Capture())
+					searchHistory[move.From()][move.To()] += depth;
 			}
 		}
 
 		if (!legal)
 		{
 			if (IsAttacked(pieces[BlackKing + turn].positions[0], turn))
-				return -CHECKMATESCORE + (info.start_depth - depth);
+				return -CHECKMATESCORE + ply;
 
 			return 0;
 		}
@@ -1055,11 +1182,14 @@ namespace chs
 		int32_t bestScore = -INF;
 
 		ResetForSearch();
+		SearchInfo info(1.5f);
 
 		for (int32_t c_depth = 1; c_depth <= depth; c_depth++)
 		{
-			SearchInfo info(c_depth);
 			bestScore = AlphaBeta(-INF, INF, c_depth, info);
+
+			if (info.stopped)
+				break;
 
 			auto i = GetPvLine(c_depth);
 			bestMove = pv_moves[0];
@@ -1070,7 +1200,7 @@ namespace chs
 			/*if (t.Elapsed() >= SEARCH_TIMEOUT)
 				break;*/
 		}
-
+		ET_LOG_INFO("Time: {}s", t.Elapsed());
 		return bestMove;
 	}
 
