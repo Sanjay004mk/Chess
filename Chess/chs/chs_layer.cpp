@@ -133,16 +133,18 @@ namespace chs
 			ma_result result;
 			ma_device_config deviceConfig;
 
+			ma_decoder_config config = ma_decoder_config_init(ma_format_unknown, 1, 0);
+			config.encodingFormat = ma_encoding_format_wav;
 
-			result = ma_decoder_init_memory(DATA_PLACE_PIECE_SOUND, 139308, NULL, &place_piece);
+			result = ma_decoder_init_memory(DATA_PLACE_PIECE_SOUND, 139308, &config, &place_piece);
 			if (result != MA_SUCCESS) {
 				ET_LOG_ERROR("Failed to load audio file");
 			}
-			result = ma_decoder_init_memory(DATA_CHECK_SOUND, 172076, NULL, &check);
+			result = ma_decoder_init_memory(DATA_CHECK_SOUND, 172076, &config, &check);
 			if (result != MA_SUCCESS) {
 				ET_LOG_ERROR("Failed to load audio file");
 			}
-			result = ma_decoder_init_memory(DATA_CHECKMATE_SOUND, 262188, NULL, &checkmate);
+			result = ma_decoder_init_memory(DATA_CHECKMATE_SOUND, 262188, &config, &checkmate);
 			if (result != MA_SUCCESS) {
 				ET_LOG_ERROR("Failed to load audio file");
 			}
@@ -204,6 +206,11 @@ namespace chs
 			return false;
 		}
 		tileManager.board = board.get();
+		if (board->turn != board->specs.player[0])
+		{
+			tileManager.canMakeMove = false;
+			JobSystem::Job([this]() {PlayEngineMove(); }, [this]() { NotifySearchComplete(); });
+		}
 		return true;
 	}
 
@@ -418,25 +425,57 @@ namespace chs
 		ImVec2 text_size = ImGui::CalcTextSize("Difficulty");
 		text_size.y += wtos;
 
-		ImGui::SetCursorPosY((viewport_size.y - text_size.y * 3) / 2.f);
+		ImGui::SetCursorPosY((viewport_size.y - text_size.y * 4.f) / 2.f);
 		ImGui::SetCursorPosX((viewport_size.x - text_size.x) / 2.f);
 		ImGui::Text("Difficulty");
 
 		text_size.x += wtos * 3.f;
-		ImGui::SetCursorPosY((viewport_size.y - text_size.y * 1.6f) / 2.f);
+		ImGui::SetCursorPosY((viewport_size.y - text_size.y * 3.f) / 2.f);
 		ImGui::SetCursorPosX((viewport_size.x - text_size.x) / 2.f);
 		ImGui::SetNextItemWidth(text_size.x);
 		ImGui::DragFloat("##difficult", &boardCreateSpecs.difficulty, 0.1f, 1.f, 10.f);
+
+		text_size = ImGui::CalcTextSize("Side");
+		text_size.y += wtos;
+
+		ImGui::SetCursorPosY((viewport_size.y - text_size.y * 0.1f) / 2.f);
+		ImGui::SetCursorPosX((viewport_size.x - text_size.x) / 2.f);
+		ImGui::Text("Side");
+
+		text_size.x += wtos * 3.f;
+		ImGui::SetCursorPosY((viewport_size.y + text_size.y * 0.9f) / 2.f);
+		ImGui::SetCursorPosX((viewport_size.x - text_size.x) / 2.f);
+		const char* bt_text = boardCreateSpecs.player[0] == Black ? "Black" : "White";
+		if (ImGui::Button(bt_text, text_size))
+			std::swap(boardCreateSpecs.player[0], boardCreateSpecs.player[1]);
 
 		text_size = ImGui::CalcTextSize("Next");
 		text_size.x += wtos;
 		text_size.y += wtos;
 
-		ImGui::SetCursorPosY((viewport_size.y + text_size.y * 3) / 2.f);
+		ImGui::SetCursorPosY((viewport_size.y + text_size.y * 4.f) / 2.f);
 		ImGui::SetCursorPosX((viewport_size.x - text_size.x) / 2.f);
 		if (ImGui::Button("Next", ImVec2(text_size)))
 			menuState = MenuState::LevelSelect;
 
+		ImGui::PopStyleVar();
+
+		DisplayHomeButton();
+	}
+
+	void ChessLayer::DisplayVsPlayerMenu()
+	{
+		boardCreateSpecs.type = MatchType::VsPlayer;
+
+		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(wtos / 2.f, wtos / 2.f));
+		ImVec2 text_size = ImGui::CalcTextSize("Next");
+		text_size.x += wtos;
+		text_size.y += wtos;
+
+		ImGui::SetCursorPosY((viewport_size.y + text_size.y * 4.f) / 2.f);
+		ImGui::SetCursorPosX((viewport_size.x - text_size.x) / 2.f);
+		if (ImGui::Button("Next", ImVec2(text_size)))
+			menuState = MenuState::LevelSelect;
 
 		ImGui::PopStyleVar();
 
@@ -480,26 +519,6 @@ namespace chs
 		DisplayHomeButton();
 	}
 
-	void ChessLayer::DisplayVsPlayerMenu()
-	{
-		boardCreateSpecs.type = MatchType::VsPlayer;
-
-		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(wtos / 2.f, wtos / 2.f));
-		ImVec2 text_size = ImGui::CalcTextSize("Next");
-		text_size.x += wtos;
-		text_size.y += wtos;
-
-		ImGui::SetCursorPosY((viewport_size.y + text_size.y * 3) / 2.f);
-		ImGui::SetCursorPosX((viewport_size.x - text_size.x) / 2.f);
-		if (ImGui::Button("Next", ImVec2(text_size)))
-			menuState = MenuState::LevelSelect;
-
-
-		ImGui::PopStyleVar();
-
-		DisplayHomeButton();
-	}
-
 	static float back_button_size = 50.f;
 
 	void ChessLayer::DisplayHomeButton()
@@ -513,6 +532,7 @@ namespace chs
 			tileManager.board = nullptr;
 			memset(fen, 0, sizeof(fen));
 			menuState = MenuState::MainMenu;
+			tileManager.UpdateFromTo(glm::vec2(0.f), glm::vec2(0.f));
 		}
 		ImGui::End();
 	}
