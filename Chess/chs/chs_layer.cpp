@@ -24,6 +24,16 @@ namespace chs
 		return v;
 	}
 
+	void data_callback(ma_device* pDevice, void* pOutput, const void* pInput, ma_uint32 frameCount)
+	{
+		ChessLayer& cl = *(ChessLayer*)(pDevice->pUserData);
+		if (!cl.sound)
+			return;
+		ma_decoder_read_pcm_frames(cl.sound, pOutput, frameCount, NULL);
+
+		(void)pInput;
+	}
+
 	void ChessLayer::OnAttach()
 	{
 		// renderpass
@@ -117,11 +127,67 @@ namespace chs
 		Resize(800, 800);
 		PreComputeBoardHashes();	
 		JobSystem::Init();
+
+		// miniaudio
+		{
+			ma_result result;
+			ma_device_config deviceConfig;
+
+
+			result = ma_decoder_init_memory(DATA_PLACE_PIECE_SOUND, 139308, NULL, &place_piece);
+			if (result != MA_SUCCESS) {
+				ET_LOG_ERROR("Failed to load audio file");
+			}
+			result = ma_decoder_init_memory(DATA_CHECK_SOUND, 172076, NULL, &check);
+			if (result != MA_SUCCESS) {
+				ET_LOG_ERROR("Failed to load audio file");
+			}
+			result = ma_decoder_init_memory(DATA_CHECKMATE_SOUND, 262188, NULL, &checkmate);
+			if (result != MA_SUCCESS) {
+				ET_LOG_ERROR("Failed to load audio file");
+			}
+
+			deviceConfig = ma_device_config_init(ma_device_type_playback);
+			deviceConfig.playback.format = place_piece.outputFormat;
+			deviceConfig.playback.channels = place_piece.outputChannels;
+			deviceConfig.sampleRate = place_piece.outputSampleRate;
+			deviceConfig.dataCallback = data_callback;
+			deviceConfig.pUserData = this;
+
+			if (ma_device_init(NULL, &deviceConfig, &device) != MA_SUCCESS) {
+				ET_LOG_ERROR("Failed to open playback device");
+				ma_decoder_uninit(&place_piece);
+			}
+
+			if (ma_device_start(&device) != MA_SUCCESS) {
+				ET_LOG_ERROR("Failed to start playback device");
+				ma_device_uninit(&device);
+				ma_decoder_uninit(&place_piece);
+			}
+		}
+
+		// set TileManager play sounds fn
+		tileManager.PlayCheckMateSound = [this]() {
+			sound = &checkmate; 
+			ma_decoder_seek_to_pcm_frame(sound, 0);
+		};
+		tileManager.PlayCheckSound = [this]() {
+			sound = &check; 
+			ma_decoder_seek_to_pcm_frame(sound, 0);
+		};
+		tileManager.PlayMovePieceSound = [this]() {
+			sound = &place_piece; 
+			ma_decoder_seek_to_pcm_frame(sound, 0);
+		};
 	}
 
 	void ChessLayer::OnDetach()
 	{
 		JobSystem::Shutdown();
+
+		// miniaudio 
+		ma_device_uninit(&device);
+		ma_decoder_uninit(&place_piece);
 	}
 
 	void ChessLayer::StartNewGame()
@@ -197,7 +263,6 @@ namespace chs
 				JobSystem::Job([this]() {PlayEngineMove(); }, [this]() { NotifySearchComplete(); });
 			}
 		}
-
 	}
 
 	static ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoDecoration

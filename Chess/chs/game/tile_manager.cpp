@@ -132,7 +132,18 @@ namespace chs
 			// piece is animated
 			if (pieceAnimations.count(piece.position))
 				if (!Animator::Animate(pieces.back().position, pieceAnimations.at(piece.position)))
+				{
 					pieceAnimations.erase(piece.position);
+					PlayMovePieceSound();
+					// piece moving sound doesn't get played
+					if (board->inCheck)
+					{
+						if (board->checkmate)
+							PlayCheckMateSound();
+						else
+							PlayCheckSound();
+					}
+				}
 		}
 	}
 
@@ -212,7 +223,20 @@ namespace chs
 						UpdateFromTo(GetPositionFromIndex(move.From()), GetPositionFromIndex(move.To()));
 						// piece wasn't dragged
 						if (shouldMove)
+							// 'Animate()' plays move piece sound when the animation ends
 							PlayAnimation(move);
+						else
+						{
+							PlayMovePieceSound();
+							// piece moving sound doesn't get played
+							if (board->inCheck)
+							{
+								if (board->checkmate)
+									PlayCheckMateSound();
+								else
+									PlayCheckSound();
+							}
+						}
 					}
 				}
 				moveTiles.clear();

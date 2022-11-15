@@ -3,6 +3,8 @@
 #include "game/tile_manager.h"
 #include "game/board.h"
 
+#include "ext/miniaudio.h"
+
 namespace chs
 {
 	class ChessLayer : public et::Layer 
@@ -47,5 +49,13 @@ namespace chs
 		et::Ref<et::Framebuffer> framebuffer;
 
 		std::vector<et::Ref<et::Texture>> textures;
+
+		// audio
+		friend void data_callback(ma_device* pDevice, void* pOutput, const void* pInput, ma_uint32 frameCount);
+		ma_decoder place_piece;
+		ma_decoder check;
+		ma_decoder checkmate;
+		ma_decoder* sound = nullptr;
+		ma_device device;
 	};
 }

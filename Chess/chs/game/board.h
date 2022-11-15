@@ -134,6 +134,8 @@ namespace chs
 		void PrintPvLine(int32_t count) const;
 
 		const BoardSpecification specs;
+		bool inCheck = false;
+		bool checkmate = false;
 
 	private:
 		MoveList GetAllMoves(Color side);
@@ -175,9 +177,6 @@ namespace chs
 		int32_t castlePermission = 0;
 		int32_t fiftyMove = 0;
 		int32_t fullMoves = 0;
-
-		bool inCheck = false;
-		bool checkmate = false;
 
 		int32_t materialScore[2] = {};
 

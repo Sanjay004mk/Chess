@@ -1,4 +1,5 @@
 #pragma once
+#include <stdint.h>
 
 // all assets for chess pieces downloaded from https://commons.wikimedia.org/wiki/File:Chess_Pieces_Sprite.svg
 
@@ -17,6 +18,12 @@ extern const uint8_t DATA_WHITE_QUEEN[];
 extern const uint8_t DATA_WHITE_KING[];
 
 extern const uint8_t DATA_MOVE_TILE[];
+
+// sound created using bosca ceoil
+
+extern const uint8_t DATA_PLACE_PIECE_SOUND[];
+extern const uint8_t DATA_CHECK_SOUND[];
+extern const uint8_t DATA_CHECKMATE_SOUND[];
 
 #if defined(CHS_INCLUDE_SHADER_STR)
 static const std::string DATA_SHADER_STR =

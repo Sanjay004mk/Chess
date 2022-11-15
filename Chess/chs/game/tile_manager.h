@@ -30,7 +30,6 @@ namespace chs
 		glm::vec2 WorldPosToScreenPos(const glm::vec2& worldPos);
 		float WorldToScreenUnit();
 
-
 	private:
 		void Animate();
 
@@ -54,5 +53,9 @@ namespace chs
 		PieceType dragPiece = 0;
 
 		friend class ChessLayer;
+		// audio
+		std::function<void(void)> PlayMovePieceSound;
+		std::function<void(void)> PlayCheckSound;
+		std::function<void(void)> PlayCheckMateSound;
 	};
 }
