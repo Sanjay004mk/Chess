@@ -191,9 +191,11 @@ namespace chs
 		if (moveMade)
 		{
 			moveMade = false;
-			tileManager.canMakeMove = false;
 			if (board->turn == board->specs.player[1] && board->specs.type == MatchType::VsComputer)
+			{
+				tileManager.canMakeMove = false;
 				JobSystem::Job([this]() {PlayEngineMove(); }, [this]() { NotifySearchComplete(); });
+			}
 		}
 
 	}
@@ -518,6 +520,9 @@ namespace chs
 
 		dispatcher.Dispatch<et::KeyPressedEvent>([this](et::KeyPressedEvent& e)
 			{
+				if (!this->tileManager.canMakeMove)
+					return false;
+
 				bool control = et::Input::IsKeyDown(et::Key::LeftControl) || et::Input::IsKeyDown(et::Key::RightControl);
 				bool shift = et::Input::IsKeyDown(et::Key::LeftShift) || et::Input::IsKeyDown(et::Key::RightShift);
 

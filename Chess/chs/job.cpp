@@ -22,7 +22,7 @@ namespace chs
 		// '.dtor' of 'lock' releases lock
 	}
 
-	void ThreadJob(int32_t i, std::shared_ptr<Barrier> barrier)
+	void ThreadJob(std::shared_ptr<Barrier> barrier)
 	{
 		// wait for all threads to start up
 		barrier->Wait();
@@ -45,6 +45,8 @@ namespace chs
 
 				JobSystem::mJob = nullptr;
 				JobSystem::mJobNotifyFunc = nullptr;
+				// we have updated shared resources,
+				// release the lock so a different thread can acquire it
 				lock.unlock();
 				ET_DEBUG_ASSERT(job);
 				job();
@@ -53,7 +55,7 @@ namespace chs
 				lock.lock();
 			}
 		}
-
+		// 'lock' lock released by its destructor
 	}
 
 	void JobSystem::Init()
@@ -68,7 +70,7 @@ namespace chs
 		auto barrier = std::make_shared<Barrier>(numThreads);
 
 		for (size_t i = 0; i < numThreads - 1; i++)
-			mThreads.emplace_back(std::thread(ThreadJob, (int32_t)(i + 1), barrier));
+			mThreads.emplace_back(std::thread(ThreadJob, barrier));
 
 		// wait for all threads to startup
 		barrier->Wait();

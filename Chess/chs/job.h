@@ -35,7 +35,7 @@ namespace chs
 		static std::function<void(void)> mJob;
 		static std::function<void(void)> mJobNotifyFunc;
 
-		friend void ThreadJob(int32_t i, std::shared_ptr<Barrier> barrier);
+		friend void ThreadJob(std::shared_ptr<Barrier> barrier);
 	};
 
 }

@@ -175,7 +175,7 @@ namespace chs
 
 	void TileManager::OnMouseClick(const glm::vec2& mousePos)
 	{
-		if (board)
+		if (board && canMakeMove)
 		{
 			clickedPos = ScreenPosToTilePos(mousePos);
 			clickedPieceDragOffset = (clickedPos - glm::vec2(4.5f)) - ScreenPosToWorldPos(mousePos);
