@@ -28,6 +28,8 @@ namespace chs
 		void DisplayLevelSelectMenu();
 		void DisplayHomeButton();
 		void PlayEngineMove();
+		void NotifySearchComplete();
+		void OfferHint();
 
 		uint32_t width = 0, height = 0;
 

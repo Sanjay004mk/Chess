@@ -37,15 +37,7 @@ namespace chs
 
 		// highlight moveTiles
 		{
-			q.size = glm::vec2(.7f);
-			for (auto& [tile, move] : moveTiles)
-			{
-				q.position = tile - glm::vec2(4.5f);
-				q.color = (int32_t)(tile.x + tile.y) % 2 == 0 ? lightTile : darkTile;
-				q.color -= glm::vec3(.2f);
-
-				et::Renderer::DrawQuad(q);
-			}
+			q.size = glm::vec2(.81f);
 			// highlight last played move
 			{
 				q.color = glm::vec3(0.95f, 0.929f, 0.893f);
@@ -60,6 +52,16 @@ namespace chs
 					et::Renderer::DrawQuad(q);
 				}
 
+			}
+
+			q.size = glm::vec2(.7f);
+			for (auto& [tile, move] : moveTiles)
+			{
+				q.position = tile - glm::vec2(4.5f);
+				q.color = (int32_t)(tile.x + tile.y) % 2 == 0 ? lightTile : darkTile;
+				q.color -= glm::vec3(.2f);
+
+				et::Renderer::DrawQuad(q);
 			}
 			q.size = glm::vec2(1.f);
 		}
@@ -196,7 +198,7 @@ namespace chs
 
 	void TileManager::OnMouseRelease(const glm::vec2& mousePos)
 	{
-		if (board)
+		if (board && canMakeMove)
 		{
 			auto pos = ScreenPosToTilePos(mousePos);
 			if ((pos != clickedPos || shouldMove) && !askPromotion)

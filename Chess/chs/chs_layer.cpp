@@ -1,5 +1,6 @@
 #include <iostream>
 
+#include "job.h"
 #include "chs_layer.h"
 #include "game/animator.h"
 #include "Entropy/Entropy.h"
@@ -115,11 +116,12 @@ namespace chs
 		// initialize pipeline and framebuffer
 		Resize(800, 800);
 		PreComputeBoardHashes();	
+		JobSystem::Init();
 	}
 
 	void ChessLayer::OnDetach()
 	{
-
+		JobSystem::Shutdown();
 	}
 
 	void ChessLayer::StartNewGame()
@@ -141,12 +143,27 @@ namespace chs
 
 	void ChessLayer::PlayEngineMove()
 	{
-		auto move = board->Search(MAX_DEPTH / 2);
+		auto copy = et::CreateRef<Board>(*board);
+		auto move = copy->Search(MAX_DEPTH / 2);
 		ET_DEBUG_ASSERT(move.Valid());
 		board->MovePiece(move);
 		board->UpdateCheckmate();
 		tileManager.UpdateFromTo(GetPositionFromIndex(move.From()), GetPositionFromIndex(move.To()));
 		tileManager.PlayAnimation(move);
+	}
+
+	void ChessLayer::NotifySearchComplete()
+	{
+		tileManager.canMakeMove = true;
+	}
+
+	void ChessLayer::OfferHint()
+	{
+		tileManager.canMakeMove = false;
+		auto copy = et::CreateRef<Board>(*board);
+		auto move = copy->Search(MAX_DEPTH / 2);
+		ET_DEBUG_ASSERT(move.Valid());
+		tileManager.UpdateFromTo(GetPositionFromIndex(move.From()), GetPositionFromIndex(move.To()));
 	}
 
 	void ChessLayer::OnUpdate(et::TimeStep ts)
@@ -174,8 +191,9 @@ namespace chs
 		if (moveMade)
 		{
 			moveMade = false;
+			tileManager.canMakeMove = false;
 			if (board->turn == board->specs.player[1] && board->specs.type == MatchType::VsComputer)
-				PlayEngineMove();
+				JobSystem::Job([this]() {PlayEngineMove(); }, [this]() { NotifySearchComplete(); });
 		}
 
 	}
@@ -474,7 +492,6 @@ namespace chs
 	}
 
 	static bool perft = false;
-	static bool search = false;
 
 	void ChessLayer::OnEvent(et::Event& e)
 	{
@@ -512,13 +529,6 @@ namespace chs
 						int32_t depth = e.GetKeyCode() - et::Key::D0;
 						if (depth > 0 && depth < 10)
 							this->board->PerftRoot(depth);
-					}
-					else if (search)
-					{
-						search = false;
-						int32_t depth = e.GetKeyCode() - et::Key::D0;
-						if (depth > 0 && depth < 10)
-							PlayEngineMove();
 					}
 					else if (control)
 					{
@@ -572,7 +582,7 @@ namespace chs
 						}
 						case et::Key::H:
 						{
-							search = true;
+							JobSystem::Job([this]() { OfferHint(); }, [this]() { NotifySearchComplete(); });
 							break;
 						}
 						}

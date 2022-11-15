@@ -30,11 +30,12 @@ namespace chs
 		glm::vec2 WorldPosToScreenPos(const glm::vec2& worldPos);
 		float WorldToScreenUnit();
 
-		Board* board;
 
 	private:
 		void Animate();
 
+		Board* board;
+		bool canMakeMove = true;
 		std::vector<PieceRenderInfo> pieces;
 		std::unordered_map<glm::vec2, size_t> pieceAnimations;
 		glm::vec2 lastFrom = {}, lastTo = {};
@@ -51,5 +52,7 @@ namespace chs
 		glm::vec2 clickedPieceDragOffset;
 		glm::vec2 mousePos;
 		PieceType dragPiece = 0;
+
+		friend class ChessLayer;
 	};
 }
