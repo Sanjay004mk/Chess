@@ -250,7 +250,18 @@ namespace chs
 	bool TileManager::Promote(PieceType piece) 
 	{
 		askPromotion = false;
-		return board->Promote(piece);
+		if (!board->Promote(piece))
+			return false;
+
+		if (board->inCheck)
+		{
+			if (board->checkmate)
+				PlayCheckMateSound();
+			else
+				PlayCheckSound();
+		}
+
+		return true;
 	}
 
 	glm::vec2 TileManager::ScreenPosToTilePos(const glm::vec2& screenPos)

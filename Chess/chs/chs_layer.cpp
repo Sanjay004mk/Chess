@@ -9,6 +9,10 @@
 #include "assets/assets.h"
 
 #define CLEAR_COLOR 0.25f, 0.21f, 0.23f
+#define HOME_BUTTON 0
+#define BACK_BUTTON 13
+#define PVE 14
+#define PVP 15
 
 namespace chs
 {
@@ -84,7 +88,7 @@ namespace chs
 				{
 					et::ShaderStage::Fragment,
 					1,
-					et::ShaderDataType::ImageSampler | et::ShaderDataType::SetArraySize(13),
+					et::ShaderDataType::ImageSampler | et::ShaderDataType::SetArraySize(16),
 					"textures"
 				}
 			};
@@ -100,7 +104,7 @@ namespace chs
 		{
 			textures =
 			{
-				et::CreateTexture("move_tile", 128, 128, DATA_MOVE_TILE, createInfo),
+				et::CreateTexture("home", 128, 128, DATA_HOME_BUTTON, createInfo),
 
 				et::CreateTexture("pawn_black", 128, 128, DATA_BLACK_PAWN, createInfo),
 				et::CreateTexture("pawn_white", 128, 128, DATA_WHITE_PAWN, createInfo),
@@ -119,6 +123,11 @@ namespace chs
 
 				et::CreateTexture("king_black", 128, 128, DATA_BLACK_KING, createInfo),
 				et::CreateTexture("king_white", 128, 128, DATA_WHITE_KING, createInfo),
+
+				et::CreateTexture("back", 128, 128, DATA_BACK_BUTTON, createInfo),
+
+				et::CreateTexture("pve", 367, 128, DATA_PVE, createInfo),
+				et::CreateTexture("pvp", 297, 128, DATA_PVP, createInfo),
 
 			};
 			defaultShader->SetTextures("textures", textures);
@@ -206,7 +215,7 @@ namespace chs
 			return false;
 		}
 		tileManager.board = board.get();
-		if (board->turn != board->specs.player[0])
+		if (board->turn != board->specs.player[0] && board->specs.type == MatchType::VsComputer)
 		{
 			tileManager.canMakeMove = false;
 			JobSystem::Job([this]() {PlayEngineMove(); }, [this]() { NotifySearchComplete(); });
@@ -219,6 +228,9 @@ namespace chs
 		auto copy = et::CreateRef<Board>(*board);
 		auto move = copy->Search(MAX_DEPTH / 2);
 		ET_DEBUG_ASSERT(move.Valid());
+		// player returned to main menu while we were searching for a move to make
+		if (!board)
+			return;
 		board->MovePiece(move);
 		board->UpdateCheckmate();
 		tileManager.UpdateFromTo(GetPositionFromIndex(move.From()), GetPositionFromIndex(move.To()));
@@ -236,6 +248,9 @@ namespace chs
 		auto copy = et::CreateRef<Board>(*board);
 		auto move = copy->Search(MAX_DEPTH / 2);
 		ET_DEBUG_ASSERT(move.Valid());
+		// player returned to main menu while we were searching for a move to make
+		if (!board)
+			return;
 		tileManager.UpdateFromTo(GetPositionFromIndex(move.From()), GetPositionFromIndex(move.To()));
 	}
 
@@ -388,11 +403,23 @@ namespace chs
 			}
 		}
 
-		DisplayHomeButton();
+		DisplayHomeButton([&]()
+			{
+				{
+					tileManager.UpdateFromTo(glm::vec2(0.f), glm::vec2(0.f));
+					board.reset();
+					tileManager.board = nullptr;
+					memset(fen, 0, sizeof(fen));
+					menuState = prevMenu = MenuState::MainMenu;
+					boardCreateSpecs.player[0] = White;
+					boardCreateSpecs.player[1] = Black;
+				}
+			}, textures[HOME_BUTTON]->GetImGuiTextureID());
 	}
 
 	void ChessLayer::DisplayMainMenu()
 	{
+		prevMenu = MenuState::MainMenu;
 		// mode selection ( vs player / computer )
 		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(wtos / 2.f, wtos / 2.f));
 		ImVec2 text_size = ImGui::CalcTextSize("Vs Player");
@@ -404,6 +431,11 @@ namespace chs
 		if (ImGui::Button("Vs Player", ImVec2(text_size)))
 			menuState = MenuState::VsPlayer;
 
+		ImVec2 img_size = ImVec2(wtos * 0.6f, wtos * 0.3f);
+		ImVec2 img_pos = ImVec2((viewport_size.x - img_size.x) / 2.f, (viewport_size.y - text_size.y * 2.8f) / 2.f);
+		ImGui::SetCursorPos(img_pos);
+		ImGui::Image(textures[PVP]->GetImGuiTextureID(), img_size);
+
 		text_size = ImGui::CalcTextSize("Vs Computer");
 		text_size.x += wtos;
 		text_size.y += wtos;
@@ -412,6 +444,10 @@ namespace chs
 		ImGui::SetCursorPosX((viewport_size.x - text_size.x) / 2.f);
 		if (ImGui::Button("Vs Computer", ImVec2(text_size)))
 			menuState = MenuState::VsComputer;
+
+		img_pos = ImVec2((viewport_size.x - img_size.x) / 2.f, (viewport_size.y + text_size.y * 1.2f) / 2.f);
+		ImGui::SetCursorPos(img_pos);
+		ImGui::Image(textures[PVE]->GetImGuiTextureID(), img_size);
 
 		ImGui::PopStyleVar();
 		
@@ -425,12 +461,12 @@ namespace chs
 		ImVec2 text_size = ImGui::CalcTextSize("Difficulty");
 		text_size.y += wtos;
 
-		ImGui::SetCursorPosY((viewport_size.y - text_size.y * 4.f) / 2.f);
+		ImGui::SetCursorPosY((viewport_size.y - text_size.y * 5.f) / 2.f);
 		ImGui::SetCursorPosX((viewport_size.x - text_size.x) / 2.f);
 		ImGui::Text("Difficulty");
 
 		text_size.x += wtos * 3.f;
-		ImGui::SetCursorPosY((viewport_size.y - text_size.y * 3.f) / 2.f);
+		ImGui::SetCursorPosY((viewport_size.y - text_size.y * 4.f) / 2.f);
 		ImGui::SetCursorPosX((viewport_size.x - text_size.x) / 2.f);
 		ImGui::SetNextItemWidth(text_size.x);
 		ImGui::DragFloat("##difficult", &boardCreateSpecs.difficulty, 0.1f, 1.f, 10.f);
@@ -438,12 +474,12 @@ namespace chs
 		text_size = ImGui::CalcTextSize("Side");
 		text_size.y += wtos;
 
-		ImGui::SetCursorPosY((viewport_size.y - text_size.y * 0.1f) / 2.f);
+		ImGui::SetCursorPosY((viewport_size.y - text_size.y * 1.1f) / 2.f);
 		ImGui::SetCursorPosX((viewport_size.x - text_size.x) / 2.f);
 		ImGui::Text("Side");
 
 		text_size.x += wtos * 3.f;
-		ImGui::SetCursorPosY((viewport_size.y + text_size.y * 0.9f) / 2.f);
+		ImGui::SetCursorPosY((viewport_size.y - text_size.y * 0.1f) / 2.f);
 		ImGui::SetCursorPosX((viewport_size.x - text_size.x) / 2.f);
 		const char* bt_text = boardCreateSpecs.player[0] == Black ? "Black" : "White";
 		if (ImGui::Button(bt_text, text_size))
@@ -456,11 +492,17 @@ namespace chs
 		ImGui::SetCursorPosY((viewport_size.y + text_size.y * 4.f) / 2.f);
 		ImGui::SetCursorPosX((viewport_size.x - text_size.x) / 2.f);
 		if (ImGui::Button("Next", ImVec2(text_size)))
+		{
+			prevMenu = menuState;
 			menuState = MenuState::LevelSelect;
+		}
 
 		ImGui::PopStyleVar();
 
-		DisplayHomeButton();
+		DisplayHomeButton([&]()
+			{
+				menuState = MenuState::MainMenu;
+			}, textures[BACK_BUTTON]->GetImGuiTextureID());
 	}
 
 	void ChessLayer::DisplayVsPlayerMenu()
@@ -472,14 +514,21 @@ namespace chs
 		text_size.x += wtos;
 		text_size.y += wtos;
 
-		ImGui::SetCursorPosY((viewport_size.y + text_size.y * 4.f) / 2.f);
+		ImGui::SetCursorPosY((viewport_size.y - text_size.y) / 2.f);
 		ImGui::SetCursorPosX((viewport_size.x - text_size.x) / 2.f);
 		if (ImGui::Button("Next", ImVec2(text_size)))
+		{
+			prevMenu = menuState;
 			menuState = MenuState::LevelSelect;
+		}
 
 		ImGui::PopStyleVar();
 
-		DisplayHomeButton();
+		DisplayHomeButton([&]()
+			{
+				prevMenu = menuState;
+				menuState = MenuState::MainMenu;
+			}, textures[BACK_BUTTON]->GetImGuiTextureID());
 	}
 
 	void ChessLayer::DisplayLevelSelectMenu()
@@ -516,24 +565,22 @@ namespace chs
 
 		ImGui::PopStyleVar();
 
-		DisplayHomeButton();
+		DisplayHomeButton([&]()
+			{
+				memset(fen, 0, sizeof(fen));
+				menuState = prevMenu;
+			}, textures[BACK_BUTTON]->GetImGuiTextureID());
 	}
 
 	static float back_button_size = 50.f;
 
-	void ChessLayer::DisplayHomeButton()
+	void ChessLayer::DisplayHomeButton(std::function<void(void)> onClick, ImTextureID texId)
 	{
 		// home button
 		ImGui::SetNextWindowPos(ImVec2(viewport_pos.x + back_button_size * 0.1f, viewport_pos.y + back_button_size * 0.1f));
 		ImGui::Begin("back_button", nullptr, window_flags);
-		if (ImGui::ImageButton(textures[0]->GetImGuiTextureID(), ImVec2(back_button_size * 0.8f, back_button_size * 0.8f)))
-		{
-			board.reset();
-			tileManager.board = nullptr;
-			memset(fen, 0, sizeof(fen));
-			menuState = MenuState::MainMenu;
-			tileManager.UpdateFromTo(glm::vec2(0.f), glm::vec2(0.f));
-		}
+		if (ImGui::ImageButton(texId, ImVec2(back_button_size * 0.8f, back_button_size * 0.8f)))
+			onClick();
 		ImGui::End();
 	}
 

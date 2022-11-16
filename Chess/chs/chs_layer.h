@@ -28,7 +28,7 @@ namespace chs
 		void DisplayVsPlayerMenu();
 		void DisplayVsCompMenu();
 		void DisplayLevelSelectMenu();
-		void DisplayHomeButton();
+		void DisplayHomeButton(std::function<void(void)> onClick, ImTextureID texId);
 		void PlayEngineMove();
 		void NotifySearchComplete();
 		void OfferHint();
@@ -37,6 +37,7 @@ namespace chs
 
 		enum class MenuState { MainMenu, VsComputer, VsPlayer, LevelSelect, InGame };
 		MenuState menuState = MenuState::MainMenu;
+		MenuState prevMenu = MenuState::MainMenu;
 		BoardSpecification boardCreateSpecs;
 
 		TileManager tileManager;

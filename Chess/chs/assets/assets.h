@@ -19,6 +19,11 @@ extern const uint8_t DATA_WHITE_KING[];
 
 extern const uint8_t DATA_MOVE_TILE[];
 
+extern const uint8_t DATA_HOME_BUTTON[];
+extern const uint8_t DATA_BACK_BUTTON[];
+extern const uint8_t DATA_PVE[];
+extern const uint8_t DATA_PVP[];
+
 // sound created using bosca ceoil
 
 extern const uint8_t DATA_PLACE_PIECE_SOUND[];
