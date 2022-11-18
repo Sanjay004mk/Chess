@@ -44,10 +44,4 @@ namespace et
 		str.erase(str.begin(), std::find_if(str.begin(), str.end(), [](unsigned char c) {return !std::isspace(c); }));
 		str.erase(std::find_if(str.rbegin(), str.rend(), [](unsigned char c) { return !std::isspace(c); }).base(), str.end());
 	}
-
-	namespace FileDialogs
-	{
-		std::string OpenFile(std::string_view filter = "Entropy Scene (*.scene)\0*.scene\0");
-		std::string SaveFile(std::string_view filter = "Entropy Scene (*.scene)\0*.scene\0");
-	};
 }

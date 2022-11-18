@@ -151,7 +151,7 @@ namespace chs
 		int32_t Quiescence(int32_t alpha, int32_t beta, SearchInfo& info);
 
 		void CalcMaterialScores();
-		int32_t MVV_LVA(Move move);
+		int32_t GetMoveScore(Move move);
 		void PickNextMove(int32_t index, MoveList& moves);
 
 		bool IsInCheck(Color side);
@@ -182,11 +182,6 @@ namespace chs
 
 		size_t hashKey = 0;
 
-		// bit boards 
-		uint64_t pawnBitBoard[2] = { 0 };
-		uint64_t majorBitBoard[2] = { 0 };
-		uint64_t minorBitBoard[2] = { 0 };
-
 		// for move searching
 		int32_t ply = 0;
 		std::array<Move, MAX_DEPTH> pv_moves;
@@ -210,31 +205,6 @@ namespace chs
 	};
 
 	void PreComputeBoardHashes();
-
-	inline void SetBit(uint64_t& bit_board, int32_t bit, int32_t position)
-	{
-		uint64_t mask = (1ull) << position;
-		bit_board = (bit_board & ~mask);
-		bit_board |= (uint64_t)bit << position;
-	}
-
-	inline int32_t GetBit(uint64_t bit_board, int32_t position)
-	{
-		return (bit_board & (1ull << position)) >> position;
-	}
-
-	inline int32_t GetNumBits(uint64_t bit_board)
-	{
-		int32_t num = 0;
-		while (bit_board)
-		{
-			if (bit_board & 1ull)
-				num++;
-			
-			bit_board = (bit_board >> 1);
-		}
-		return num;
-	}
 
 	inline bool InsideBoard(const glm::vec2& pos)
 	{

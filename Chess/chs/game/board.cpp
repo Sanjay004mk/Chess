@@ -267,20 +267,6 @@ namespace chs
 			{
 				auto piece = tiles[i];
 				piecesCheck[piece].push_back(i);
-
-				if (!IsKing(piece))
-				{
-					auto c = GetColor(piece);
-
-					if (IsMajor[piece])
-						if (!GetBit(majorBitBoard[c], i))
-							return false;
-					else if (IsMinor[piece])
-						if (!GetBit(minorBitBoard[c], i))
-							return false;
-					else if (!GetBit(pawnBitBoard[c], i))
-						return false;
-				}
 			}
 		}
 
@@ -396,17 +382,6 @@ namespace chs
 		tiles[index] = piece;
 		pieces[piece].positions[pieces[piece].count++] = index;
 
-		// add to bit board
-		if (!IsKing(piece))
-		{
-			auto c = GetColor(piece);
-			if (IsMajor[piece])
-				SetBit(majorBitBoard[c], 1, index);
-			else if (IsMinor[piece])
-				SetBit(minorBitBoard[c], 1, index);
-			else
-				SetBit(pawnBitBoard[c], 1, index);
-		}
 		return true;
 	}
 
@@ -433,17 +408,6 @@ namespace chs
 
 		pieces[p].count--;
 
-		// clear from bit board
-		if (!IsKing(p))
-		{
-			auto c = GetColor(p);
-			if (IsMajor[p])
-				SetBit(majorBitBoard[c], 0, index);
-			else if (IsMinor[p])
-				SetBit(minorBitBoard[c], 0, index);
-			else
-				SetBit(pawnBitBoard[c], 0, index);
-		}
 		return true;
 	}
 
@@ -467,30 +431,6 @@ namespace chs
 
 		auto pos = (it - pieces[p].positions.begin());
 		pieces[p].positions[pos] = to;
-
-		// update bit board
-		if (!IsKing(p))
-		{
-			auto c = GetColor(p);
-			if (IsMajor[p])
-			{
-				SetBit(majorBitBoard[c], 0, from);
-
-				SetBit(majorBitBoard[c], 1, to);
-			}
-			else if (IsMinor[p])
-			{
-				SetBit(minorBitBoard[c], 0, from);
-
-				SetBit(minorBitBoard[c], 1, to);
-			}
-			else
-			{
-				SetBit(pawnBitBoard[c], 0, from);
-
-				SetBit(pawnBitBoard[c], 1, to);
-			}
-		}
 
 		return true;
 	}
@@ -950,7 +890,7 @@ namespace chs
 		return side == White ? -score : score;
 	}
 
-	int32_t Board::MVV_LVA(Move move)
+	int32_t Board::GetMoveScore(Move move)
 	{
 		if (pv_table.count(hashKey))
 		{
@@ -1016,12 +956,12 @@ namespace chs
 	{
 		ET_DEBUG_ASSERT(index < moves.size());
 		Move move = moves[index];
-		int32_t bestScore = MVV_LVA(move);
+		int32_t bestScore = GetMoveScore(move);
 		int32_t bestI = index;
 
 		for (size_t i = index; i < moves.size(); i++)
 		{
-			int32_t score = MVV_LVA(moves[i]);
+			int32_t score = GetMoveScore(moves[i]);
 			if (score > bestScore)
 			{
 				bestScore = score;
@@ -1109,7 +1049,7 @@ namespace chs
 
 		CHECK_TIME;
 
-		if (IsRepeated() || fiftyMove >= 100)
+		if ((IsRepeated() || fiftyMove >= 100) && ply)
 			return 0;
 
 		if (ply >= MAX_DEPTH)
